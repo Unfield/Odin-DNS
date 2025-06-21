@@ -1,7 +1,10 @@
 package util
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/url"
 
 	"github.com/Unfield/Odin-DNS/pkg/odintypes"
 )
@@ -144,4 +147,24 @@ func splitDomainName(name string) []string {
 	}
 
 	return labels
+}
+
+type CheckForDemoFailedResponse struct {
+	Message string `json:"message"`
+}
+
+func CheckForDemoKey(queryParams url.Values, w http.ResponseWriter, demoKey string) bool {
+	if queryParams.Get("demo_key") == "" || queryParams.Get("demo_key") != demoKey {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		response := CheckForDemoFailedResponse{
+			Message: "Invalid or missing demo key",
+		}
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+			return false
+		}
+		return false
+	}
+	return true
 }
