@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Unfield/Odin-DNS/internal/types"
-	"github.com/Unfield/Odin-DNS/internal/util"
 	"github.com/alexedwards/argon2id"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
@@ -24,12 +23,6 @@ type LoginResponse struct {
 }
 
 func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
-	checkSuccessfull := util.CheckForDemoKey(r.URL.Query(), w, h.config.DEMO_KEY)
-	if !checkSuccessfull {
-		h.logger.Info("Get user attempt with invalid demo key")
-		return
-	}
-
 	var loginReq LoginRequest
 
 	err := json.NewDecoder(r.Body).Decode(&loginReq)
@@ -121,12 +114,6 @@ type RegisterResponse struct {
 }
 
 func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
-	checkSuccessfull := util.CheckForDemoKey(r.URL.Query(), w, h.config.DEMO_KEY)
-	if !checkSuccessfull {
-		h.logger.Info("Get user attempt with invalid demo key")
-		return
-	}
-
 	var registerReq RegisterRequest
 	err := json.NewDecoder(r.Body).Decode(&registerReq)
 	if err != nil {
@@ -191,12 +178,6 @@ type LogoutRequest struct {
 }
 
 func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
-	checkSuccessfull := util.CheckForDemoKey(r.URL.Query(), w, h.config.DEMO_KEY)
-	if !checkSuccessfull {
-		h.logger.Info("Get user attempt with invalid demo key")
-		return
-	}
-
 	var logoutReq LogoutRequest
 	err := json.NewDecoder(r.Body).Decode(&logoutReq)
 	if err != nil {
@@ -246,12 +227,6 @@ type GetUserResponse struct {
 }
 
 func (h *Handler) GetUserHandler(w http.ResponseWriter, r *http.Request) {
-	checkSuccessfull := util.CheckForDemoKey(r.URL.Query(), w, h.config.DEMO_KEY)
-	if !checkSuccessfull {
-		h.logger.Info("Get user attempt with invalid demo key")
-		return
-	}
-
 	var getUserReq GetUserRequest
 	err := json.NewDecoder(r.Body).Decode(&getUserReq)
 	if err != nil {

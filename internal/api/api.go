@@ -7,6 +7,7 @@ import (
 
 	"github.com/Unfield/Odin-DNS/internal/config"
 	mysql "github.com/Unfield/Odin-DNS/internal/datastore/MySQL"
+	"github.com/Unfield/Odin-DNS/internal/util"
 )
 
 func StartRouter(config *config.Config) {
@@ -28,11 +29,29 @@ func StartRouter(config *config.Config) {
 	handler := NewHandler(mysqlDriver, config)
 
 	// User authentication routes
-	mux.HandleFunc("POST /api/v1/login", handler.LoginHandler)
-	mux.HandleFunc("POST /api/v1/register", handler.RegisterHandler)
-	mux.HandleFunc("POST /api/v1/logout", handler.LogoutHandler)
-	mux.HandleFunc("GET /api/v1/user", handler.GetUserHandler)
+	mux.Handle("POST /api/v1/login", DemoKeyChecker(config, logger, http.HandlerFunc(handler.LoginHandler)))
+	mux.Handle("POST /api/v1/register", DemoKeyChecker(config, logger, http.HandlerFunc(handler.RegisterHandler)))
+	mux.Handle("POST /api/v1/logout", DemoKeyChecker(config, logger, http.HandlerFunc(handler.LogoutHandler)))
+	mux.Handle("GET /api/v1/user", DemoKeyChecker(config, logger, http.HandlerFunc(handler.GetUserHandler)))
+
+	// Zone management routes
+	mux.Handle("POST /api/v1/zone", DemoKeyChecker(config, logger, http.HandlerFunc(handler.CreateZoneHandler)))
+	mux.Handle("GET /api/v1/zone/records", DemoKeyChecker(config, logger, http.HandlerFunc(handler.GetZoneRecordsHandler)))
+	mux.Handle("DELETE /api/v1/zone", DemoKeyChecker(config, logger, http.HandlerFunc(handler.DeleteZoneHandler)))
+	// Record management routes
+	mux.Handle("POST /api/v1/record", DemoKeyChecker(config, logger, http.HandlerFunc(handler.CreateRecordHandler)))
 
 	logger.Info("Odin DNS API running", "port", config.API_PORT)
 	http.ListenAndServe(fmt.Sprintf("%s:%d", config.API_HOST, config.API_PORT), mux)
+}
+
+func DemoKeyChecker(config *config.Config, logger *slog.Logger, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		checkSuccessfull := util.CheckForDemoKey(r.URL.Query(), w, config.DEMO_KEY)
+		if !checkSuccessfull {
+			logger.Info("Get user attempt with invalid demo key")
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
