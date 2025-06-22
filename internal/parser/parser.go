@@ -22,7 +22,7 @@ func ParseRequest(buffer []byte) (odintypes.DNSRequest, error) {
 	request.Header = header
 
 	offset := 12
-	var qsection []odintypes.Question
+	var qsection []odintypes.DNSQuestion
 	for i := range int(header.QDCount) {
 		if offset >= len(buffer) {
 			return odintypes.DNSRequest{}, fmt.Errorf("buffer too short for question section %d", i+1)
@@ -41,8 +41,8 @@ func ParseRequest(buffer []byte) (odintypes.DNSRequest, error) {
 	return request, nil
 }
 
-func ParseHeaderSection(headerSection [12]byte) (odintypes.HSection, error) {
-	var hsection odintypes.HSection
+func ParseHeaderSection(headerSection [12]byte) (odintypes.DNSHeader, error) {
+	var hsection odintypes.DNSHeader
 
 	hsection.ID = uint16(headerSection[0])<<8 | uint16(headerSection[1])
 	hsection.Flags = util.ParseFlags(uint16(headerSection[2])<<8 | uint16(headerSection[3]))
@@ -54,30 +54,26 @@ func ParseHeaderSection(headerSection [12]byte) (odintypes.HSection, error) {
 	return hsection, nil
 }
 
-func ParseQuestionSection(buffer []byte, offset int) (odintypes.Question, int, error) {
+func ParseQuestionSection(buffer []byte, offset int) (odintypes.DNSQuestion, int, error) {
 	if offset+4 > len(buffer) {
-		return odintypes.Question{}, offset, fmt.Errorf("buffer too short for question section")
+		return odintypes.DNSQuestion{}, offset, fmt.Errorf("buffer too short for question section")
 	}
 
-	var qsection odintypes.Question
+	var qsection odintypes.DNSQuestion
 	name, newOffset, err := util.ParseDomainName(buffer, offset)
 	if err != nil {
-		return odintypes.Question{}, offset, err
+		return odintypes.DNSQuestion{}, newOffset, fmt.Errorf("error parsing domain name: %w", err)
 	}
 	qsection.Name = name
 
 	if newOffset+4 > len(buffer) {
-		return odintypes.Question{}, newOffset, fmt.Errorf("buffer too short for question type and class")
+		return odintypes.DNSQuestion{}, newOffset, fmt.Errorf("buffer too short for question type and class")
 	}
-	qsection.Type, err = util.ParseType(uint16(buffer[newOffset])<<8 | uint16(buffer[newOffset+1]))
-	if err != nil {
-		return odintypes.Question{}, newOffset, fmt.Errorf("error parsing question type: %w", err)
-	}
+	qsection.Type = uint16(buffer[newOffset])<<8 | uint16(buffer[newOffset+1])
+	newOffset += 2
 
-	qsection.Class, err = util.ParseClass(uint16(buffer[newOffset+2])<<8 | uint16(buffer[newOffset+3]))
-	if err != nil {
-		return odintypes.Question{}, newOffset, fmt.Errorf("error parsing question class: %w", err)
-	}
+	qsection.Class = uint16(buffer[newOffset])<<8 | uint16(buffer[newOffset+1])
+	newOffset += 2
 
-	return qsection, newOffset + 4, nil
+	return qsection, newOffset, nil
 }

@@ -96,16 +96,16 @@ func ParseClass(classCode uint16) (string, error) {
 	}
 }
 
-func ParseFlags(flags uint16) odintypes.Flags {
-	return odintypes.Flags{
+func ParseFlags(flags uint16) odintypes.DNSHeaderFlags {
+	return odintypes.DNSHeaderFlags{
 		QR:     (flags & 0x8000) != 0,
-		Opcode: int((flags & 0x7800) >> 11),
+		Opcode: uint8((flags & 0x7800) >> 11),
 		AA:     (flags & 0x0400) != 0,
 		TC:     (flags & 0x0200) != 0,
 		RD:     (flags & 0x0100) != 0,
 		RA:     (flags & 0x0080) != 0,
-		Z:      (flags & 0x0040) != 0,
-		RCode:  int(flags & 0x000F),
+		Z:      uint8((flags & 0x0070) >> 4),
+		RCode:  uint8(flags & 0x000F),
 	}
 }
 
@@ -167,4 +167,21 @@ func CheckForDemoKey(queryParams url.Values, w http.ResponseWriter, demoKey stri
 		return false
 	}
 	return true
+}
+
+func ConvertRDataStringToBytes(recordType uint16, rDataString string) ([]byte, error) {
+	switch recordType {
+	case odintypes.TYPE_A:
+		return odintypes.ParseA_RData(rDataString)
+	case odintypes.TYPE_AAAA:
+		return odintypes.ParseAAAA_RData(rDataString)
+	case odintypes.TYPE_CNAME, odintypes.TYPE_NS, odintypes.TYPE_PTR:
+		return odintypes.ParseDomainName_RData(rDataString)
+	case odintypes.TYPE_MX:
+		return odintypes.ParseMX_RData(rDataString)
+	case odintypes.TYPE_TXT:
+		return odintypes.ParseTXT_RData(rDataString)
+	default:
+		return nil, fmt.Errorf("unsupported RData conversion for record type %d", recordType)
+	}
 }

@@ -2,6 +2,7 @@ package datastore
 
 import (
 	"github.com/Unfield/Odin-DNS/internal/types"
+	"github.com/Unfield/Odin-DNS/pkg/odintypes"
 )
 
 type Driver interface {
@@ -22,4 +23,6 @@ type Driver interface {
 	UpdateRecord(record *types.DBRecord) error
 	GetFullZone(name string) (*types.DBZone, []types.DBRecord, error)
 	GetFullZoneById(id string) (*types.DBZone, []types.DBRecord, error)
+
+	LookupRecordForDNSQuery(rname string, rtype uint16, rclass uint16) (*odintypes.DNSRecord, error)
 }
