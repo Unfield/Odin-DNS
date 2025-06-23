@@ -6,6 +6,7 @@ import (
 	"github.com/Unfield/Odin-DNS/internal/api"
 	"github.com/Unfield/Odin-DNS/internal/config"
 	"github.com/Unfield/Odin-DNS/internal/server"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 func main() {
