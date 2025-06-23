@@ -38,9 +38,17 @@ type DBRecord struct {
 	Name      string       `json:"name" db:"name"`
 	Type      string       `json:"type" db:"type"`
 	Class     string       `json:"class" db:"class"`
-	TTL       int          `json:"ttl" db:"ttl"`
+	TTL       uint32       `json:"ttl" db:"ttl"`
 	RData     string       `json:"rdata" db:"rdata"`
 	CreatedAt time.Time    `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time    `json:"updated_at" db:"updated_at"`
 	DeletedAt sql.NullTime `json:"deleted_at" db:"deleted_at"`
+}
+
+type CacheRecord struct {
+	Name  string `json:"name"`
+	Type  string `json:"type"`
+	Class string `json:"class"`
+	TTL   uint32 `json:"ttl"`
+	RData string `json:"rdata"`
 }

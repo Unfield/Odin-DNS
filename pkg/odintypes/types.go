@@ -239,3 +239,59 @@ func ParseTXT_RData(s string) ([]byte, error) {
 	}
 	return []byte(s), nil
 }
+
+func FormatA_RData(rDataBytes []byte) string {
+	if len(rDataBytes) != net.IPv4len {
+		return ""
+	}
+	return net.IPv4(rDataBytes[0], rDataBytes[1], rDataBytes[2], rDataBytes[3]).String()
+}
+
+func FormatAAAA_RData(rDataBytes []byte) string {
+	if len(rDataBytes) != net.IPv6len {
+		return ""
+	}
+	return net.IP(rDataBytes).String()
+}
+
+func FormatDomainName_RData(rDataBytes []byte) string {
+	return string(rDataBytes)
+}
+
+func FormatMX_RData(rDataBytes []byte) string {
+	if len(rDataBytes) < 2 {
+		return ""
+	}
+
+	pref := binary.BigEndian.Uint16(rDataBytes[:2])
+	domainBytes := rDataBytes[2:]
+
+	domainString := FormatDomainName_RData(domainBytes)
+	if domainString == "" {
+		return ""
+	}
+
+	return fmt.Sprintf("%d %s", pref, domainString)
+}
+
+func FormatTXT_RData(rDataBytes []byte) string {
+	return string(rDataBytes)
+}
+
+func FormatSRV_RData(rDataBytes []byte) string {
+	if len(rDataBytes) < 6 {
+		return ""
+	}
+
+	priority := binary.BigEndian.Uint16(rDataBytes[0:2])
+	weight := binary.BigEndian.Uint16(rDataBytes[2:4])
+	port := binary.BigEndian.Uint16(rDataBytes[4:6])
+	targetBytes := rDataBytes[6:]
+
+	targetString := FormatDomainName_RData(targetBytes)
+	if targetString == "" {
+		return ""
+	}
+
+	return fmt.Sprintf("%d %d %d %s", priority, weight, port, targetString)
+}

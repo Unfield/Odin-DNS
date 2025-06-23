@@ -7,6 +7,7 @@ import (
 
 	"github.com/Unfield/Odin-DNS/internal/config"
 	mysql "github.com/Unfield/Odin-DNS/internal/datastore/MySQL"
+	redis "github.com/Unfield/Odin-DNS/internal/datastore/Redis"
 	"github.com/Unfield/Odin-DNS/internal/parser"
 	"github.com/Unfield/Odin-DNS/pkg/odintypes"
 )
@@ -19,6 +20,8 @@ func StartServer(config *config.Config) {
 		logger.Error("Failed to connect to MySQL", "error", err)
 		return
 	}
+
+	cacheDriver := redis.NewRedisCacheDriver(mysqlDriver, "fit-teal-46742.upstash.io:6379", "default", "AbaWAAIjcDEyMDgzYTBkY2UwMzU0NjliODA2NGYwODVkODM3NThhYXAxMA", 0)
 
 	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", config.DNS_PORT))
 	if err != nil {
@@ -98,7 +101,7 @@ func StartServer(config *config.Config) {
 		logger.Info("Processing DNS request", "domain", req.Questions[0].Name)
 
 		for _, question := range req.Questions {
-			dnsRecord, err := mysqlDriver.LookupRecordForDNSQuery(question.Name, question.Type, question.Class)
+			dnsRecord, err := cacheDriver.LookupRecordForDNSQuery(question.Name, question.Type, question.Class)
 
 			if err != nil {
 				logger.Error("Database lookup error", "name", question.Name, "type", question.Type, "class", question.Class, "error", err)
