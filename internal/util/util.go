@@ -185,3 +185,20 @@ func ConvertRDataStringToBytes(recordType uint16, rDataString string) ([]byte, e
 		return nil, fmt.Errorf("unsupported RData conversion for record type %d", recordType)
 	}
 }
+
+func ConvertRDataBytesToString(recordType uint16, rDataBytes []byte) string {
+	switch recordType {
+	case odintypes.TYPE_A:
+		return odintypes.FormatA_RData(rDataBytes)
+	case odintypes.TYPE_AAAA:
+		return odintypes.FormatAAAA_RData(rDataBytes)
+	case odintypes.TYPE_CNAME, odintypes.TYPE_NS, odintypes.TYPE_PTR:
+		return odintypes.FormatDomainName_RData(rDataBytes)
+	case odintypes.TYPE_MX:
+		return odintypes.FormatMX_RData(rDataBytes)
+	case odintypes.TYPE_TXT:
+		return odintypes.FormatTXT_RData(rDataBytes)
+	default:
+		return fmt.Sprintf("Unsupported_RData_Format_%d", recordType)
+	}
+}

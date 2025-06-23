@@ -114,7 +114,7 @@ type CreateRecordRequest struct {
 	Name   string `json:"name"`
 	Type   string `json:"type"`
 	Class  string `json:"class"`
-	TTL    int    `json:"ttl"`
+	TTL    uint32 `json:"ttl"`
 	RData  string `json:"rdata"`
 }
 
