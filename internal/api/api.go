@@ -32,11 +32,11 @@ func StartRouter(config *config.Config) {
 	mux.Handle("POST /api/v1/login", DemoKeyChecker(config, logger, http.HandlerFunc(handler.LoginHandler)))
 	mux.Handle("POST /api/v1/register", DemoKeyChecker(config, logger, http.HandlerFunc(handler.RegisterHandler)))
 	mux.Handle("POST /api/v1/logout", DemoKeyChecker(config, logger, http.HandlerFunc(handler.LogoutHandler)))
-	mux.Handle("GET /api/v1/user", DemoKeyChecker(config, logger, http.HandlerFunc(handler.GetUserHandler)))
+	mux.Handle("GET /api/v1/user/{session_id}", DemoKeyChecker(config, logger, http.HandlerFunc(handler.GetUserHandler)))
 
 	// Zone management routes
 	mux.Handle("POST /api/v1/zone", DemoKeyChecker(config, logger, http.HandlerFunc(handler.CreateZoneHandler)))
-	mux.Handle("GET /api/v1/zone/records", DemoKeyChecker(config, logger, http.HandlerFunc(handler.GetZoneRecordsHandler)))
+	mux.Handle("GET /api/v1/zone/records/{session_id}", DemoKeyChecker(config, logger, http.HandlerFunc(handler.GetZoneRecordsHandler)))
 	mux.Handle("DELETE /api/v1/zone", DemoKeyChecker(config, logger, http.HandlerFunc(handler.DeleteZoneHandler)))
 	// Record management routes
 	mux.Handle("POST /api/v1/record", DemoKeyChecker(config, logger, http.HandlerFunc(handler.CreateRecordHandler)))

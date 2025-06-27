@@ -7,7 +7,7 @@ import (
 )
 
 func (d *MySQLDriver) GetUser(username string) (*types.User, error) {
-	query := "SELECT id, username, password_hash, created_at, updated_at, deleted_at FROM users WHERE username = ?"
+	query := "SELECT id, username, email, password_hash, created_at, updated_at, deleted_at FROM users WHERE username = ?"
 	var user types.User
 	err := d.db.Get(&user, query, username)
 	if err != nil {
@@ -22,7 +22,7 @@ func (d *MySQLDriver) GetUser(username string) (*types.User, error) {
 }
 
 func (d *MySQLDriver) GetUserById(id string) (*types.User, error) {
-	query := "SELECT id, username, password_hash, created_at, updated_at, deleted_at FROM users WHERE id = ?"
+	query := "SELECT id, username, email, password_hash, created_at, updated_at, deleted_at FROM users WHERE id = ?"
 	var user types.User
 	err := d.db.Get(&user, query, id)
 	if err != nil {
@@ -37,7 +37,7 @@ func (d *MySQLDriver) GetUserById(id string) (*types.User, error) {
 }
 
 func (d *MySQLDriver) CreateUser(user *types.User) error {
-	query := "INSERT INTO users (id, username, password_hash, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())"
+	query := "INSERT INTO users (id, username, email, password_hash, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())"
 	_, err := d.db.Exec(query, user.ID, user.Username, user.PasswordHash)
 	if err != nil {
 		d.logger.Error("Failed to create user", "error", err)

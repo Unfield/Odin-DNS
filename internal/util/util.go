@@ -202,3 +202,11 @@ func ConvertRDataBytesToString(recordType uint16, rDataBytes []byte) string {
 		return fmt.Sprintf("Unsupported_RData_Format_%d", recordType)
 	}
 }
+
+func RespondWithJSON(w http.ResponseWriter, status int, data any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
+}

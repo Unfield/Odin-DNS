@@ -7,9 +7,15 @@ import (
 	"time"
 
 	"github.com/Unfield/Odin-DNS/internal/types"
+	"github.com/Unfield/Odin-DNS/internal/util"
 	"github.com/alexedwards/argon2id"
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
+
+type GenericErrorResponse struct {
+	Error        bool   `json:"error"`
+	ErrorMessage string `json:"error_message"`
+}
 
 type LoginRequest struct {
 	Username string `json:"username"`
@@ -27,47 +33,46 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&loginReq)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		util.RespondWithJSON(w, http.StatusBadRequest, &GenericErrorResponse{Error: true, ErrorMessage: "Invalid request body"})
 		return
 	}
 
 	if loginReq.Username == "" || loginReq.Password == "" {
-		http.Error(w, "Username and password are required", http.StatusBadRequest)
+		util.RespondWithJSON(w, http.StatusBadRequest, &GenericErrorResponse{Error: true, ErrorMessage: "Username and password are required"})
 		return
 	}
 
 	user, err := h.store.GetUser(loginReq.Username)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		util.RespondWithJSON(w, http.StatusInternalServerError, &GenericErrorResponse{Error: true, ErrorMessage: "Internal server error"})
 		return
 	}
 
 	if user == nil {
-		h.logger.Info("Login attempt with non-existing user", "username", loginReq.Username)
-		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		util.RespondWithJSON(w, http.StatusUnauthorized, &GenericErrorResponse{Error: true, ErrorMessage: "Invalid username or password"})
 		return
 	}
 
 	passwordValid, err := argon2id.ComparePasswordAndHash(loginReq.Password, user.PasswordHash)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		util.RespondWithJSON(w, http.StatusInternalServerError, &GenericErrorResponse{Error: true, ErrorMessage: "Failed to verify password"})
 		return
 	}
 
 	if !passwordValid || user.DeletedAt.Valid {
-		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
+		util.RespondWithJSON(w, http.StatusUnauthorized, &GenericErrorResponse{Error: true, ErrorMessage: "Invalid username or password"})
 		return
 	}
 
 	sessionId, err := gonanoid.New()
 	if err != nil {
-		http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		util.RespondWithJSON(w, http.StatusInternalServerError, &GenericErrorResponse{Error: true, ErrorMessage: "Failed to create session ID"})
 		return
 	}
 
 	sessionToken, err := gonanoid.New(42)
 	if err != nil {
-		http.Error(w, "Failed to create session token", http.StatusInternalServerError)
+		util.RespondWithJSON(w, http.StatusInternalServerError, &GenericErrorResponse{Error: true, ErrorMessage: "Failed to create session token"})
 		return
 	}
 
@@ -81,29 +86,16 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = h.store.CreateSession(session)
 	if err != nil {
-		http.Error(w, "Failed to create session", http.StatusInternalServerError)
+		util.RespondWithJSON(w, http.StatusInternalServerError, &GenericErrorResponse{Error: true, ErrorMessage: "Failed to create session"})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	response := LoginResponse{
-		SessionID: session.ID,
-		Token:     session.Token,
-		Username:  user.Username,
-	}
-
-	err = json.NewEncoder(w).Encode(response)
-	if err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
-	}
-
-	h.logger.Info("User logged in", "username", user.Username, "session_id", session.ID)
+	util.RespondWithJSON(w, http.StatusOK, &LoginResponse{SessionID: session.ID, Token: session.Token, Username: user.Username})
 }
 
 type RegisterRequest struct {
 	Username        string `json:"username"`
+	Email           string `json:"email"`
 	Password        string `json:"password"`
 	PasswordConfirm string `json:"password_confirm"`
 }
@@ -117,35 +109,36 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	var registerReq RegisterRequest
 	err := json.NewDecoder(r.Body).Decode(&registerReq)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		util.RespondWithJSON(w, http.StatusBadRequest, &GenericErrorResponse{Error: true, ErrorMessage: "Invalid request body"})
 		return
 	}
 
 	if registerReq.Username == "" || registerReq.Password == "" || registerReq.PasswordConfirm == "" {
-		http.Error(w, "Username and password are required", http.StatusBadRequest)
+		util.RespondWithJSON(w, http.StatusBadRequest, &GenericErrorResponse{Error: true, ErrorMessage: "Username, password, and password confirmation are required"})
 		return
 	}
 
 	if registerReq.Password != registerReq.PasswordConfirm {
-		http.Error(w, "Passwords do not match", http.StatusBadRequest)
+		util.RespondWithJSON(w, http.StatusBadRequest, &GenericErrorResponse{Error: true, ErrorMessage: "Passwords do not match"})
 		return
 	}
 
 	userId, err := gonanoid.New()
 	if err != nil {
-		http.Error(w, "Failed to create user ID", http.StatusInternalServerError)
+		util.RespondWithJSON(w, http.StatusInternalServerError, &GenericErrorResponse{Error: true, ErrorMessage: "Failed to create user ID"})
 		return
 	}
 
 	hashedPassword, err := argon2id.CreateHash(registerReq.Password, argon2id.DefaultParams)
 	if err != nil {
-		http.Error(w, "Failed to hash password", http.StatusInternalServerError)
+		util.RespondWithJSON(w, http.StatusInternalServerError, &GenericErrorResponse{Error: true, ErrorMessage: "Failed to hash password"})
 		return
 	}
 
 	user := &types.User{
 		ID:           userId,
 		Username:     registerReq.Username,
+		Email:        registerReq.Email,
 		PasswordHash: hashedPassword,
 		CreatedAt:    time.Now(),
 		UpdatedAt:    time.Now(),
@@ -153,52 +146,42 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	err = h.store.CreateUser(user)
 	if err != nil {
-		http.Error(w, "Failed to create user", http.StatusInternalServerError)
+		util.RespondWithJSON(w, http.StatusInternalServerError, &GenericErrorResponse{Error: true, ErrorMessage: "Failed to create user"})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	response := RegisterResponse{
-		ID:       user.ID,
-		Username: user.Username,
-	}
-
-	err = json.NewEncoder(w).Encode(response)
-	if err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
-	}
-
-	h.logger.Info("User registered", "username", user.Username, "user_id", user.ID)
+	util.RespondWithJSON(w, http.StatusCreated, &RegisterResponse{ID: user.ID, Username: user.Username})
 }
 
 type LogoutRequest struct {
 	SessionID string `json:"session_id"`
 }
 
+type LogoutResponse struct {
+	Message string `json:"message"`
+}
+
 func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	var logoutReq LogoutRequest
 	err := json.NewDecoder(r.Body).Decode(&logoutReq)
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		util.RespondWithJSON(w, http.StatusBadRequest, &GenericErrorResponse{Error: true, ErrorMessage: "Invalid request body"})
 		return
 	}
 
 	if logoutReq.SessionID == "" {
-		http.Error(w, "Session ID is required", http.StatusBadRequest)
+		util.RespondWithJSON(w, http.StatusBadRequest, &GenericErrorResponse{Error: true, ErrorMessage: "Session ID is required"})
 		return
 	}
 
 	session, err := h.store.GetSession(logoutReq.SessionID)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		util.RespondWithJSON(w, http.StatusInternalServerError, &GenericErrorResponse{Error: true, ErrorMessage: "Internal server error"})
 		return
 	}
 
 	if session == nil {
-		h.logger.Info("Logout attempt with non-existing session", "session_id", logoutReq.SessionID)
-		http.Error(w, "Invalid session ID", http.StatusUnauthorized)
+		util.RespondWithJSON(w, http.StatusUnauthorized, &GenericErrorResponse{Error: true, ErrorMessage: "Invalid session ID"})
 		return
 	}
 
@@ -208,74 +191,48 @@ func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	err = h.store.UpdateSession(session)
 	if err != nil {
-		http.Error(w, "Failed to update session", http.StatusInternalServerError)
+		util.RespondWithJSON(w, http.StatusInternalServerError, &GenericErrorResponse{Error: true, ErrorMessage: "Failed to log out"})
 		return
 	}
 
-	w.WriteHeader(http.StatusNoContent)
-
-	h.logger.Info("User logged out", "session_id", logoutReq.SessionID)
-}
-
-type GetUserRequest struct {
-	SessionID string `json:"session_id"`
+	util.RespondWithJSON(w, http.StatusOK, &LogoutResponse{Message: "Successfully logged out"})
 }
 
 type GetUserResponse struct {
 	ID       string `json:"id"`
 	Username string `json:"username"`
+	Email    string `json:"email"`
 }
 
 func (h *Handler) GetUserHandler(w http.ResponseWriter, r *http.Request) {
-	var getUserReq GetUserRequest
-	err := json.NewDecoder(r.Body).Decode(&getUserReq)
-	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	sessionId := r.PathValue("session_id")
+
+	if sessionId == "" {
+		util.RespondWithJSON(w, http.StatusBadRequest, &GenericErrorResponse{Error: true, ErrorMessage: "Session ID is required"})
 		return
 	}
 
-	if getUserReq.SessionID == "" {
-		http.Error(w, "Session ID is required", http.StatusBadRequest)
-		return
-	}
-
-	session, err := h.store.GetSession(getUserReq.SessionID)
+	session, err := h.store.GetSession(sessionId)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		util.RespondWithJSON(w, http.StatusInternalServerError, &GenericErrorResponse{Error: true, ErrorMessage: "Internal server error"})
 		return
 	}
 
 	if session == nil || session.DeletedAt.Valid {
-		h.logger.Info("Get user attempt with non-existing or deleted session", "session_id", getUserReq.SessionID)
-		http.Error(w, "Invalid session ID", http.StatusUnauthorized)
+		util.RespondWithJSON(w, http.StatusUnauthorized, &GenericErrorResponse{Error: true, ErrorMessage: "Invalid or expired session"})
 		return
 	}
 
 	user, err := h.store.GetUserById(session.UserID)
 	if err != nil {
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		util.RespondWithJSON(w, http.StatusInternalServerError, &GenericErrorResponse{Error: true, ErrorMessage: "Failed to retrieve user"})
 		return
 	}
 
 	if user == nil || user.DeletedAt.Valid {
-		h.logger.Info("Get user attempt with non-existing or deleted user", "user_id", session.UserID)
-		http.Error(w, "User not found", http.StatusNotFound)
+		util.RespondWithJSON(w, http.StatusUnauthorized, &GenericErrorResponse{Error: true, ErrorMessage: "User not found or deleted"})
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-
-	response := GetUserResponse{
-		ID:       user.ID,
-		Username: user.Username,
-	}
-
-	err = json.NewEncoder(w).Encode(response)
-	if err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		return
-	}
-
-	h.logger.Info("User details retrieved", "user_id", user.ID, "username", user.Username)
+	util.RespondWithJSON(w, http.StatusOK, &GetUserResponse{ID: user.ID, Username: user.Username, Email: user.Email})
 }
