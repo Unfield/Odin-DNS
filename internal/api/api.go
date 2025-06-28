@@ -10,7 +10,7 @@ import (
 	"github.com/Unfield/Odin-DNS/internal/api/middleware"
 	"github.com/Unfield/Odin-DNS/internal/config"
 	mysql "github.com/Unfield/Odin-DNS/internal/datastore/MySQL"
-	"github.com/Unfield/Odin-DNS/internal/util"
+	redis "github.com/Unfield/Odin-DNS/internal/datastore/Redis"
 )
 
 func StartRouter(config *config.Config) {
@@ -18,48 +18,63 @@ func StartRouter(config *config.Config) {
 
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /health", HealthCheckHandler)
-
-	mux.Handle("GET /swagger/", middleware.SwaggerHandler())
-	mux.HandleFunc("GET /swagger", middleware.SwaggerRedirect)
-	logger.Info("Swagger UI enabled", "url", fmt.Sprintf("http://%s:%d/swagger/", config.API_HOST, config.API_PORT))
-
 	mysqlDriver, err := mysql.NewMySQLDriver(config.MySQL_DSN)
 	if err != nil {
 		logger.Error("Failed to connect to MySQL", "error", err)
 		return
 	}
 
+	cacheDriver := redis.NewRedisCacheDriver(mysqlDriver, config.REDIS_HOST, config.REDIS_USERNAME, config.REDIS_PASSWORD, config.REDIS_DATABASE)
+
+	corsConfig := middleware.CORSConfig{
+		AllowedOrigins:   []string{"*"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization", "X-Requested-With", "Accept"},
+		ExposedHeaders:   []string{"X-Request-ID"},
+		AllowCredentials: true,
+		MaxAge:           3600,
+	}
+
+	chain := middleware.New(
+		middleware.CORS(corsConfig),
+		middleware.RequestID(),
+		middleware.Logger(),
+		middleware.Recovery(),
+		middleware.Timeout(30*time.Second),
+	)
+
+	protectedChain := chain.Use(
+		middleware.AuthMiddleware(cacheDriver),
+	)
+
+	rateLimiter := middleware.NewRateLimiter(10, time.Minute)
+	apiChain := chain.Use(rateLimiter.Middleware())
+
+	mux.HandleFunc("GET /health", chain.ThenFunc(HealthCheckHandler).ServeHTTP)
+
+	// Swagger UI
+	mux.Handle("GET /swagger/", chain.Then(middleware.SwaggerHandler()))
+	mux.HandleFunc("GET /swagger", chain.ThenFunc(middleware.SwaggerRedirect).ServeHTTP)
+	logger.Info("Swagger UI enabled", "url", fmt.Sprintf("http://%s:%d/swagger/", config.API_HOST, config.API_PORT))
+
 	handler := NewHandler(mysqlDriver, config)
 
-	// User authentication routes
-	mux.Handle("POST /api/v1/login", DemoKeyChecker(config, logger, http.HandlerFunc(handler.LoginHandler)))
-	mux.Handle("POST /api/v1/register", DemoKeyChecker(config, logger, http.HandlerFunc(handler.RegisterHandler)))
-	mux.Handle("POST /api/v1/logout", DemoKeyChecker(config, logger, http.HandlerFunc(handler.LogoutHandler)))
-	mux.Handle("GET /api/v1/user/{session_id}", DemoKeyChecker(config, logger, http.HandlerFunc(handler.GetUserHandler)))
+	mux.Handle("POST /api/v1/login", apiChain.ThenFunc(http.HandlerFunc(handler.LoginHandler)))
+	mux.Handle("POST /api/v1/register", apiChain.ThenFunc(http.HandlerFunc(handler.RegisterHandler)))
+	mux.Handle("POST /api/v1/logout", protectedChain.ThenFunc(http.HandlerFunc(handler.LogoutHandler)))
+	mux.Handle("GET /api/v1/user/{session_id}", protectedChain.ThenFunc(http.HandlerFunc(handler.GetUserHandler)))
 
-	// Zone management routes
-	mux.Handle("POST /api/v1/zone", DemoKeyChecker(config, logger, http.HandlerFunc(handler.CreateZoneHandler)))
-	mux.Handle("GET /api/v1/zone/records/{session_id}", DemoKeyChecker(config, logger, http.HandlerFunc(handler.GetZoneRecordsHandler)))
-	mux.Handle("DELETE /api/v1/zone", DemoKeyChecker(config, logger, http.HandlerFunc(handler.DeleteZoneHandler)))
-	// Record management routes
-	mux.Handle("POST /api/v1/record", DemoKeyChecker(config, logger, http.HandlerFunc(handler.CreateRecordHandler)))
-
-	corsMux := middleware.CORS(mux)
+	/*
+		// Zone management routes
+		mux.Handle("POST /api/v1/zone", protectedChain.ThenFunc(http.HandlerFunc(handler.CreateZoneHandler)))
+		mux.Handle("GET /api/v1/zone/records/{session_id}", protectedChain.ThenFunc(http.HandlerFunc(handler.GetZoneRecordsHandler)))
+		mux.Handle("DELETE /api/v1/zone", protectedChain.ThenFunc(http.HandlerFunc(handler.DeleteZoneHandler)))
+		// Record management routes
+		mux.Handle("POST /api/v1/record", protectedChain.ThenFunc(http.HandlerFunc(handler.CreateRecordHandler)))
+	*/
 
 	logger.Info("Odin DNS API running", "port", config.API_PORT)
-	http.ListenAndServe(fmt.Sprintf("%s:%d", config.API_HOST, config.API_PORT), corsMux)
-}
-
-func DemoKeyChecker(config *config.Config, logger *slog.Logger, next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		checkSuccessfull := util.CheckForDemoKey(r.URL.Query(), w, config.DEMO_KEY)
-		if !checkSuccessfull {
-			logger.Info("Get user attempt with invalid demo key")
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
+	http.ListenAndServe(fmt.Sprintf("%s:%d", config.API_HOST, config.API_PORT), mux)
 }
 
 type HealthResponse struct {

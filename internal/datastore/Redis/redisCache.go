@@ -168,3 +168,55 @@ func (d *RedisCacheDriver) CreateRecord(record *types.DBRecord) error {
 
 	return nil
 }
+
+func (d *RedisCacheDriver) CreateSession(session *types.Session) error {
+	d.logger.Info("Creating session in persistent store", "session_id", session.ID, "user_id", session.UserID)
+	if err := d.Driver.CreateSession(session); err != nil {
+		return fmt.Errorf("failed to create session in persistent store: %w", err)
+	}
+
+	sessionJSONBytes, err := json.Marshal(session)
+	if err != nil {
+		d.logger.Error("Failed to marshal session for caching during creation", "error", err, "session", session)
+		return nil
+	}
+
+	cacheKey := fmt.Sprintf("session:%s", session.ID)
+	cacheTTL := 24 * time.Hour
+
+	if setErr := d.redisClient.Set(d.context, cacheKey, sessionJSONBytes, cacheTTL).Err(); setErr != nil {
+		d.logger.Error("Failed to cache session during creation", "error", setErr, "key", cacheKey)
+		return nil
+	}
+
+	d.logger.Info("Session successfully created and cached", "session_id", session.ID, "user_id", session.UserID)
+
+	return nil
+}
+
+func (d *RedisCacheDriver) GetSessionByToken(token string) (*types.Session, error) {
+	d.logger.Info("Fetching session by token from cache", "token", token)
+	cacheKey := fmt.Sprintf("session:%s", token)
+
+	cacheEntry, err := d.redisClient.Get(d.context, cacheKey).Result()
+	if err != nil {
+		if err == redis.Nil {
+			d.logger.Info("Session not found in cache", "token", token)
+			return d.Driver.GetSessionByToken(token)
+		}
+		d.logger.Error("Failed to retrieve session from cache", "error", err, "key", cacheKey)
+		return nil, fmt.Errorf("cache query failed for session token %s: %w", token, err)
+	}
+
+	var cachedSession types.Session
+	if err := json.Unmarshal([]byte(cacheEntry), &cachedSession); err != nil {
+		d.logger.Error("Failed to unmarshal session from cache (corrupted?)", "error", err, "cache_entry", cacheEntry)
+		d.redisClient.Del(d.context, cacheKey)
+		d.logger.Info("Attempting to fetch session from persistent store after unmarshal error", "token", token)
+		return d.Driver.GetSessionByToken(token)
+	}
+
+	d.logger.Info("Cache hit for session", "session_id", cachedSession.ID, "user_id", cachedSession.UserID)
+
+	return &cachedSession, nil
+}

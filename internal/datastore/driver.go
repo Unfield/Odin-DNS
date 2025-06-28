@@ -12,6 +12,7 @@ type Driver interface {
 	UpdateUser(user *types.User) error
 
 	GetSession(id string) (*types.Session, error)
+	GetSessionByToken(token string) (*types.Session, error)
 	CreateSession(session *types.Session) error
 	UpdateSession(session *types.Session) error
 

@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+type SessionContextKey struct {
+	SessionID string
+	UserID    string
+	Token     string
+}
+
 type User struct {
 	ID           string       `json:"id" db:"id"`
 	Username     string       `json:"username" db:"username"`
