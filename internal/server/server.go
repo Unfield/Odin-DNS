@@ -21,7 +21,7 @@ func StartServer(config *config.Config) {
 		return
 	}
 
-	cacheDriver := redis.NewRedisCacheDriver(mysqlDriver, "fit-teal-46742.upstash.io:6379", "default", "AbaWAAIjcDEyMDgzYTBkY2UwMzU0NjliODA2NGYwODVkODM3NThhYXAxMA", 0)
+	cacheDriver := redis.NewRedisCacheDriver(mysqlDriver, config.REDIS_HOST, config.REDIS_USERNAME, config.REDIS_PASSWORD, config.REDIS_DATABASE)
 
 	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", config.DNS_PORT))
 	if err != nil {

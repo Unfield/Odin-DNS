@@ -14,8 +14,6 @@ type Config struct {
 	API_PORT    int    `json:"api_port" yaml:"api_port" xml:"api_port"`
 	API_HOST    string `json:"api_host" yaml:"api_host" xml:"api_host"`
 
-	DEMO_KEY string `json:"demo_key" yaml:"demo_key" xml:"demo_key"`
-
 	MySQL_DSN string `json:"mysql_dsn" yaml:"mysql_dsn" xml:"mysql_dsn"`
 
 	REDIS_HOST     string `json:"redis_host" yaml:"redis_host" xml:"redis_host"`
@@ -31,7 +29,6 @@ func DefaultConfig() *Config {
 		API_ENABLED:    true,
 		API_PORT:       8080,
 		API_HOST:       "127.0.0.1",
-		DEMO_KEY:       "8icGOXsNqQrIT0d6Nbhk6Bb9oSfkztvq",
 		MySQL_DSN:      "admin:admin@tcp(127.0.0.1:3306)/odindns?parseTime=true",
 		REDIS_HOST:     "localhost:6379",
 		REDIS_USERNAME: "default",
@@ -92,8 +89,6 @@ func LoadConfig() (*Config, error) {
 		return nil, err
 	}
 	cfg.API_HOST = getString("ODIN_API_HOST", cfg.API_HOST)
-
-	cfg.DEMO_KEY = getString("ODIN_DEMO_KEY", cfg.DEMO_KEY)
 
 	cfg.MySQL_DSN = getString("ODIN_MYSQL_DSN", cfg.MySQL_DSN)
 

@@ -69,6 +69,21 @@ func (d *MySQLDriver) GetSession(id string) (*types.Session, error) {
 	return &session, nil
 }
 
+func (d *MySQLDriver) GetSessionByToken(token string) (*types.Session, error) {
+	query := "SELECT id, user_id, token, created_at, updated_at, deleted_at FROM sessions WHERE token = ?"
+	var session types.Session
+	err := d.db.Get(&session, query, token)
+	if err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			d.logger.Info("Session not found", "token", token)
+			return nil, nil
+		}
+		d.logger.Error("Failed to get session", "error", err)
+		return nil, err
+	}
+	return &session, nil
+}
+
 func (d *MySQLDriver) CreateSession(session *types.Session) error {
 	query := "INSERT INTO sessions (id, user_id, token, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())"
 	_, err := d.db.Exec(query, session.ID, session.UserID, session.Token)

@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS sessions (
 
 CREATE INDEX idx_sessions_user_id ON sessions (user_id);
 
+CREATE INDEX idx_sessions_token ON sessions (token);
+
 CREATE TABLE IF NOT EXISTS zones (
     id VARCHAR(21) COLLATE utf8mb4_bin NOT NULL PRIMARY KEY,
     owner VARCHAR(21) COLLATE utf8mb4_bin NOT NULL,

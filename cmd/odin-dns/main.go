@@ -13,7 +13,7 @@ import (
 
 //	@title			Odin DNS API
 //	@version		1.0
-//	@description	Advanced DNS server with REST API for managing DNS records and zones.
+//	@description	Advanced DNS server with REST API for managing DNS records and zones. This API provides comprehensive DNS management capabilities including user authentication, zone management, and DNS record operations.
 //	@termsOfService	http://swagger.io/terms/
 
 //	@contact.name	Odin DNS Support
@@ -27,20 +27,30 @@ import (
 // @BasePath	/
 // @schemes	http https
 
-// @securityDefinitions.apikey DemoKey
-// @in query
-// @name demo_key
-// @description Demo API key required for all endpoints
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter your bearer token in the format: Bearer {token}
+
+// @tag.name health
+// @tag.description Health check endpoints
+
+// @tag.name authentication
+// @tag.description User authentication and session management
+
+// @tag.name user
+// @tag.description User profile and account management
+
+// @tag.name zones
+// @tag.description DNS zone management operations
+
+// @tag.name records
+// @tag.description DNS record management operations
 
 func main() {
 	config, err := config.LoadConfig()
 	if err != nil {
 		slog.Error("Error loading configuration", "error", err)
-		return
-	}
-
-	if config.DEMO_KEY == "changeme" {
-		slog.Error("Demo key is not set. Please set the DEMO_KEY in the environment variables or config file.")
 		return
 	}
 
