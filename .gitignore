@@ -1,1 +1,59 @@
+# Binaries for programs and plugins
+*.exe
+*.dll
+*.so
+*.dylib
+*.rpm
+*.deb
+*.apk
+*.ko
+
+# Output of the go build command
+/bin/
+/tmp/
+*.exe~
+*.dll~
+
+# Editor-specific files (adjust as needed)
+.idea/
+.vscode/
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+._*
+
+# Dependency directories
+vendor/
+
+# Environment variables
 .env
+.env.*local
+!.env.example # Keep the example file
+
+# Test coverage output
+*.out
+
+# Swagger generated files
+/docs/
+# If swagger generates directly in the root or other dirs:
+# *.swagger.json
+# *.swagger.yaml
+
+# Go module cache and downloads (managed by Go itself)
+# This is usually in your GOPATH, no need to ignore in project
+# go.sum
+# go.mod
+
+# Specific to your project (optional)
+# Database files if SQLite or local DB files are created
+*.db
+*.sqlite3
+
+# Log files
+*.log
+
+# Air hot-reloading tool temp directory
+.air/

@@ -12,22 +12,31 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
-type GenericErrorResponse struct {
-	Error        bool   `json:"error"`
-	ErrorMessage string `json:"error_message"`
-}
-
 type LoginRequest struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
+	Username string `json:"username" binding:"required" example:"john_doe"`
+	Password string `json:"password" binding:"required" example:"password123"`
 }
 
 type LoginResponse struct {
-	SessionID string `json:"session_id"`
-	Token     string `json:"token"`
-	Username  string `json:"username"`
+	SessionID string `json:"session_id" example:"V1StGXR8_Z5jdHi6B-myT"`
+	Token     string `json:"token" example:"kWnEeaODiH5Sb1H1REbfLA3VTl7jbvlpAn4vKNDXEcgOcgdmRhRjRb"`
+	Username  string `json:"username" example:"john_doe"`
 }
 
+// LoginHandler handles user authentication
+// @Summary User login
+// @Description Authenticate a user with username and password, returns session information
+// @Tags authentication
+// @Accept json
+// @Produce json
+// @Param demo_key query string true "Demo API key for authentication"
+// @Param login body LoginRequest true "User login credentials"
+// @Success 200 {object} LoginResponse "Login successful"
+// @Failure 400 {object} GenericErrorResponse "Bad request - invalid input"
+// @Failure 401 {object} GenericErrorResponse "Unauthorized - invalid credentials"
+// @Failure 500 {object} GenericErrorResponse "Internal server error"
+// @Security DemoKey
+// @Router /api/v1/login [post]
 func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	var loginReq LoginRequest
 
@@ -94,17 +103,30 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type RegisterRequest struct {
-	Username        string `json:"username"`
-	Email           string `json:"email"`
-	Password        string `json:"password"`
-	PasswordConfirm string `json:"password_confirm"`
+	Username        string `json:"username" binding:"required" example:"john_doe" minLength:"3" maxLength:"50"`
+	Email           string `json:"email" binding:"required" example:"john@example.com" format:"email"`
+	Password        string `json:"password" binding:"required" example:"password123" minLength:"8"`
+	PasswordConfirm string `json:"password_confirm" binding:"required" example:"password123" minLength:"8"`
 }
 
 type RegisterResponse struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
+	ID       string `json:"id" example:"V1StGXR8_Z5jdHi6B-myT"`
+	Username string `json:"username" example:"john_doe"`
 }
 
+// RegisterHandler handles user registration
+// @Summary User registration
+// @Description Register a new user account with username, email, and password
+// @Tags authentication
+// @Accept json
+// @Produce json
+// @Param demo_key query string true "Demo API key for authentication"
+// @Param register body RegisterRequest true "User registration details"
+// @Success 201 {object} RegisterResponse "Registration successful"
+// @Failure 400 {object} GenericErrorResponse "Bad request - invalid input or passwords don't match"
+// @Failure 500 {object} GenericErrorResponse "Internal server error - failed to create user"
+// @Security DemoKey
+// @Router /api/v1/register [post]
 func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	var registerReq RegisterRequest
 	err := json.NewDecoder(r.Body).Decode(&registerReq)
@@ -154,13 +176,27 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type LogoutRequest struct {
-	SessionID string `json:"session_id"`
+	SessionID string `json:"session_id" binding:"required" example:"V1StGXR8_Z5jdHi6B-myT"`
 }
 
 type LogoutResponse struct {
-	Message string `json:"message"`
+	Message string `json:"message" example:"Successfully logged out"`
 }
 
+// LogoutHandler handles user logout
+// @Summary User logout
+// @Description Logout a user by invalidating their session
+// @Tags authentication
+// @Accept json
+// @Produce json
+// @Param demo_key query string true "Demo API key for authentication"
+// @Param logout body LogoutRequest true "Session information for logout"
+// @Success 200 {object} LogoutResponse "Logout successful"
+// @Failure 400 {object} GenericErrorResponse "Bad request - invalid session ID"
+// @Failure 401 {object} GenericErrorResponse "Unauthorized - invalid session"
+// @Failure 500 {object} GenericErrorResponse "Internal server error"
+// @Security DemoKey
+// @Router /api/v1/logout [post]
 func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	var logoutReq LogoutRequest
 	err := json.NewDecoder(r.Body).Decode(&logoutReq)
@@ -199,11 +235,24 @@ func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 type GetUserResponse struct {
-	ID       string `json:"id"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
+	ID       string `json:"id" example:"V1StGXR8_Z5jdHi6B-myT"`
+	Username string `json:"username" example:"john_doe"`
+	Email    string `json:"email" example:"john@example.com"`
 }
 
+// GetUserHandler retrieves user information by session ID
+// @Summary Get user information
+// @Description Retrieve user details using a valid session ID
+// @Tags users
+// @Produce json
+// @Param demo_key query string true "Demo API key for authentication"
+// @Param session_id path string true "User session ID" minLength:"1"
+// @Success 200 {object} GetUserResponse "User information retrieved successfully"
+// @Failure 400 {object} GenericErrorResponse "Bad request - session ID required"
+// @Failure 401 {object} GenericErrorResponse "Unauthorized - invalid or expired session"
+// @Failure 500 {object} GenericErrorResponse "Internal server error"
+// @Security DemoKey
+// @Router /api/v1/user/{session_id} [get]
 func (h *Handler) GetUserHandler(w http.ResponseWriter, r *http.Request) {
 	sessionId := r.PathValue("session_id")
 
