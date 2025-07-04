@@ -43,7 +43,7 @@ func (d *RedisCacheDriver) Close() error {
 	return d.redisClient.Close()
 }
 
-func (d *RedisCacheDriver) LookupRecordForDNSQuery(rname string, rtype uint16, rclass uint16) (*odintypes.DNSRecord, error) {
+func (d *RedisCacheDriver) LookupRecordForDNSQuery(rname string, rtype uint16, rclass uint16) (*odintypes.DNSRecord, uint8, error) {
 	rTypeStr := odintypes.TypeToString(rtype)
 	rClassStr := odintypes.ClassToString(rclass)
 	cacheKey := combineSearchPartsToKey(rname, rtype, rclass)
@@ -52,13 +52,13 @@ func (d *RedisCacheDriver) LookupRecordForDNSQuery(rname string, rtype uint16, r
 	if err != nil {
 		if err == redis.Nil {
 			d.logger.Info("Cache miss", "name", rname, "type", rTypeStr, "class", rClassStr)
-			dbRecordFromPersistent, err := d.Driver.LookupRecordForDNSQuery(rname, rtype, rclass)
+			dbRecordFromPersistent, _, err := d.Driver.LookupRecordForDNSQuery(rname, rtype, rclass)
 			if err != nil {
-				return nil, err
+				return nil, 0, err
 			}
 			if dbRecordFromPersistent == nil {
 				d.logger.Info("Record not found in persistent store", "name", rname)
-				return nil, nil
+				return nil, 0, err
 			}
 
 			rDataStringForCache := util.ConvertRDataBytesToString(dbRecordFromPersistent.Type, dbRecordFromPersistent.RData)
@@ -90,10 +90,10 @@ func (d *RedisCacheDriver) LookupRecordForDNSQuery(rname string, rtype uint16, r
 					d.logger.Info("Record cached successfully", "name", rname, "type", rTypeStr, "class", rClassStr, "ttl", cacheTTL)
 				}
 			}
-			return dbRecordFromPersistent, nil
+			return dbRecordFromPersistent, 0, nil
 		} else {
 			d.logger.Error("Failed to retrieve data from cache", "error", err, "key", cacheKey)
-			return nil, fmt.Errorf("cache query failed for %s (%s, %s): %w", rname, rTypeStr, rClassStr, err)
+			return nil, 0, fmt.Errorf("cache query failed for %s (%s, %s): %w", rname, rTypeStr, rClassStr, err)
 		}
 	}
 
@@ -122,7 +122,7 @@ func (d *RedisCacheDriver) LookupRecordForDNSQuery(rname string, rtype uint16, r
 		Class: rclass,
 		TTL:   cachedDBRecord.TTL,
 		RData: packedRData,
-	}, nil
+	}, 1, nil
 }
 
 func combineSearchPartsToKey(rname string, rtype uint16, rclass uint16) string {

@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"runtime/debug"
-	"slices"
 	"time"
 )
 
@@ -131,7 +130,7 @@ type CORSConfig struct {
 	MaxAge           int // in seconds
 }
 
-// CORS middleware function with debugging
+// CORS middleware function
 func CORS(config CORSConfig) Middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -141,67 +140,77 @@ func CORS(config CORSConfig) Middleware {
 			}
 
 			origin := r.Header.Get("Origin")
-			log.Printf("[%s] CORS: Request from Origin: %s, Method: %s, Path: %s", requestID, origin, r.Method, r.URL.Path)
+			log.Printf("[%s] CORS: Request from Origin: '%s', Method: '%s', Path: '%s'", requestID, origin, r.Method, r.URL.Path)
 
-			// 1. Handle AllowedOrigins
-			if len(config.AllowedOrigins) == 0 || (len(config.AllowedOrigins) == 1 && config.AllowedOrigins[0] == "*") {
-				// If no specific origins are set or only "*" is set, allow all.
-				// For credentials, explicit origin must be set, so use origin if present.
-				if config.AllowCredentials && origin != "" {
-					w.Header().Set("Access-Control-Allow-Origin", origin)
-					log.Printf("[%s] CORS: Setting ACAO to explicit origin: %s (due to AllowCredentials)", requestID, origin)
+			// Determine if it's a cross-origin request
+			isCrossOrigin := (origin != "")
+
+			// 1. Set Access-Control-Allow-Origin
+			if isCrossOrigin { // Only apply ACAO if an Origin header is present
+				isOriginAllowed := false
+				if len(config.AllowedOrigins) == 0 || (len(config.AllowedOrigins) == 1 && config.AllowedOrigins[0] == "*") {
+					// If no specific origins or wildcard.
+					// For credentialed requests, *must* echo origin, not *.
+					if config.AllowCredentials {
+						w.Header().Set("Access-Control-Allow-Origin", origin)
+						log.Printf("[%s] CORS: Setting ACAO to explicit origin: '%s' (wildcard & credentials)", requestID, origin)
+					} else {
+						w.Header().Set("Access-Control-Allow-Origin", "*")
+						log.Printf("[%s] CORS: Setting ACAO to '*' (wildcard, no credentials)", requestID)
+					}
+					isOriginAllowed = true // Treat as allowed if wildcard is used
 				} else {
-					w.Header().Set("Access-Control-Allow-Origin", "*")
-					log.Printf("[%s] CORS: Setting ACAO to * (no specific origins configured or wildcard used)", requestID)
+					// Check against specific allowed origins
+					for _, allowedOrigin := range config.AllowedOrigins {
+						if allowedOrigin == origin {
+							isOriginAllowed = true
+							break
+						}
+					}
+					if isOriginAllowed {
+						w.Header().Set("Access-Control-Allow-Origin", origin)
+						log.Printf("[%s] CORS: Setting ACAO to allowed origin: '%s'", requestID, origin)
+					} else {
+						// Origin is present but not in AllowedOrigins list
+						log.Printf("[%s] CORS: Origin '%s' NOT in AllowedOrigins. ACAO header NOT set.", requestID, origin)
+						// For preflight, deny access immediately
+						if r.Method == http.MethodOptions {
+							log.Printf("[%s] CORS: Preflight OPTIONS from disallowed origin '%s'. Returning 403 Forbidden.", requestID, origin)
+							w.WriteHeader(http.StatusForbidden)
+							return
+						}
+					}
 				}
 			} else {
-				// Check if the request origin is in the allowed list
-				isOriginAllowed := false
-
-				if slices.Contains(config.AllowedOrigins, origin) {
-					isOriginAllowed = true
-				}
-
-				if isOriginAllowed {
-					w.Header().Set("Access-Control-Allow-Origin", origin)
-					log.Printf("[%s] CORS: Setting ACAO to allowed origin: %s", requestID, origin)
-				} else {
-					// If origin is not allowed, do not set Access-Control-Allow-Origin.
-					// The browser will then block the request.
-					log.Printf("[%s] CORS: Origin %s NOT in AllowedOrigins. ACAO header NOT set.", requestID, origin)
-					// For preflight, if origin not allowed, return 403 Forbidden
-					if r.Method == "OPTIONS" {
-						log.Printf("[%s] CORS: Preflight OPTIONS request from disallowed origin %s. Returning 403.", requestID, origin)
-						w.WriteHeader(http.StatusForbidden)
-						return
-					}
-					// For actual request, it will likely fail anyway because ACAO not set
-					// but you can explicitly error out if you want to be stricter.
-					// http.Error(w, "Origin not allowed", http.StatusForbidden)
-					// return
-				}
+				// No Origin header means same-origin request, CORS headers typically not needed.
+				// However, if AllowCredentials is true and Swagger is requesting from 127.0.0.1:8080 and API is on localhost:8080,
+				// they are technically different origins, and the browser *should* send an Origin header.
+				// The lack of Origin header might be the actual bug here, if the browser thinks it's same-origin.
+				log.Printf("[%s] CORS: No Origin header. Assuming same-origin or non-browser request. ACAO not strictly needed for this type.", requestID)
+				// For robustness, if you want ACAO on same-origin for some reason:
+				// w.Header().Set("Access-Control-Allow-Origin", r.URL.Scheme + "://" + r.URL.Host)
 			}
 
-			// 2. Handle AllowedMethods (for preflight requests)
-			if r.Method == http.MethodOptions {
+			// The rest of your CORS middleware logic for Methods, Headers, ExposedHeaders,
+			// AllowCredentials, MaxAge, and OPTIONS preflight handling can remain largely the same.
+			// Ensure these are always set for preflight responses if isCrossOrigin is true
+
+			// Set AllowedMethods for preflight (if OPTIONS and isCrossOrigin)
+			if r.Method == http.MethodOptions && isCrossOrigin {
 				if len(config.AllowedMethods) > 0 {
 					w.Header().Set("Access-Control-Allow-Methods", joinStrings(config.AllowedMethods))
 					log.Printf("[%s] CORS: Setting ACAM: %s", requestID, joinStrings(config.AllowedMethods))
 				} else {
-					// Default safe methods if not specified
 					w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, PATCH, OPTIONS")
 					log.Printf("[%s] CORS: Setting ACAM to default: GET, POST, PUT, DELETE, PATCH, OPTIONS", requestID)
 				}
 			}
 
-			// 3. Handle AllowedHeaders (for preflight requests)
-			if r.Method == http.MethodOptions {
-				// Get headers requested by browser (Access-Control-Request-Headers)
+			// Set AllowedHeaders for preflight (if OPTIONS and isCrossOrigin)
+			if r.Method == http.MethodOptions && isCrossOrigin {
 				reqHeaders := r.Header.Get("Access-Control-Request-Headers")
 				if reqHeaders != "" {
 					log.Printf("[%s] CORS: Browser requested headers: %s", requestID, reqHeaders)
-					// If specific allowed headers are configured, use them.
-					// Otherwise, echo back the requested headers (common practice for simplicity).
 					if len(config.AllowedHeaders) > 0 {
 						w.Header().Set("Access-Control-Allow-Headers", joinStrings(config.AllowedHeaders))
 						log.Printf("[%s] CORS: Setting ACAH to configured: %s", requestID, joinStrings(config.AllowedHeaders))
@@ -210,17 +219,15 @@ func CORS(config CORSConfig) Middleware {
 						log.Printf("[%s] CORS: Setting ACAH to requested: %s (no configured headers)", requestID, reqHeaders)
 					}
 				} else if len(config.AllowedHeaders) > 0 {
-					// If browser didn't request specific headers but config has them
 					w.Header().Set("Access-Control-Allow-Headers", joinStrings(config.AllowedHeaders))
 					log.Printf("[%s] CORS: Setting ACAH to configured: %s (no requested headers)", requestID, joinStrings(config.AllowedHeaders))
 				} else {
-					// Default headers if nothing is specified
 					w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept")
 					log.Printf("[%s] CORS: Setting ACAH to default: Content-Type, Authorization, X-Requested-With, Accept", requestID)
 				}
 			}
 
-			// 4. Handle ExposedHeaders
+			// Handle ExposedHeaders (if any)
 			if len(config.ExposedHeaders) > 0 {
 				w.Header().Set("Access-Control-Expose-Headers", joinStrings(config.ExposedHeaders))
 				log.Printf("[%s] CORS: Setting ACEH: %s", requestID, joinStrings(config.ExposedHeaders))
@@ -228,7 +235,7 @@ func CORS(config CORSConfig) Middleware {
 				log.Printf("[%s] CORS: No ExposedHeaders configured.", requestID)
 			}
 
-			// 5. Handle AllowCredentials
+			// Handle AllowCredentials (should always be true if your app needs it, and then ACAO cannot be '*')
 			if config.AllowCredentials {
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				log.Printf("[%s] CORS: Setting ACAC to true", requestID)
@@ -236,22 +243,21 @@ func CORS(config CORSConfig) Middleware {
 				log.Printf("[%s] CORS: AllowCredentials is false or not set.", requestID)
 			}
 
-			// 6. Handle MaxAge (for preflight requests)
-			if r.Method == http.MethodOptions && config.MaxAge > 0 {
+			// Handle MaxAge for preflight
+			if r.Method == http.MethodOptions && isCrossOrigin && config.MaxAge > 0 {
 				w.Header().Set("Access-Control-Max-Age", fmt.Sprintf("%d", config.MaxAge))
 				log.Printf("[%s] CORS: Setting ACMA: %d seconds", requestID, config.MaxAge)
-			} else if r.Method == http.MethodOptions {
+			} else if r.Method == http.MethodOptions && isCrossOrigin {
 				log.Printf("[%s] CORS: No MaxAge configured for preflight.", requestID)
 			}
 
-			// If it's a preflight request, respond immediately with 204 No Content
+			// Final check for OPTIONS preflight
 			if r.Method == http.MethodOptions {
 				log.Printf("[%s] CORS: Preflight OPTIONS request handled. Returning 204 No Content.", requestID)
 				w.WriteHeader(http.StatusNoContent)
 				return // Crucial: Do not call next.ServeHTTP for OPTIONS preflight
 			}
 
-			// For all other requests, proceed to the next middleware/handler
 			log.Printf("[%s] CORS: Non-OPTIONS request, passing to next handler.", requestID)
 			next.ServeHTTP(w, r)
 		})
