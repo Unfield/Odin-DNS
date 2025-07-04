@@ -16,7 +16,7 @@ type DBRecord struct {
 	RData string
 }
 
-func (d *MySQLDriver) LookupRecordForDNSQuery(rname string, rtype uint16, rclass uint16) (*odintypes.DNSRecord, error) {
+func (d *MySQLDriver) LookupRecordForDNSQuery(rname string, rtype uint16, rclass uint16) (*odintypes.DNSRecord, uint8, error) {
 	query := "SELECT name, type, class, ttl, rdata FROM zone_entries WHERE name = ? AND type = ? AND class = ?"
 
 	var dbRecord DBRecord
@@ -31,16 +31,16 @@ func (d *MySQLDriver) LookupRecordForDNSQuery(rname string, rtype uint16, rclass
 	if err != nil {
 		if err == sql.ErrNoRows {
 			d.logger.Debug("Record not found in DB (sql.ErrNoRows)", "name", rname, "type", rTypeStr, "class", rClassStr)
-			return nil, nil
+			return nil, 0, nil
 		}
 		d.logger.Error("Failed to scan record from DB or other SQL error", "error", err, "name", rname, "type", rTypeStr, "class", rClassStr)
-		return nil, fmt.Errorf("database query failed for %s (%s, %s): %w", rname, rTypeStr, rClassStr, err)
+		return nil, 0, fmt.Errorf("database query failed for %s (%s, %s): %w", rname, rTypeStr, rClassStr, err)
 	}
 
 	packedRData, convErr := util.ConvertRDataStringToBytes(rtype, dbRecord.RData)
 	if convErr != nil {
 		d.logger.Error("Failed to convert RData string to bytes", "type", dbRecord.Type, "rdata_string", dbRecord.RData, "error", convErr)
-		return nil, fmt.Errorf("failed to convert RData string '%s' for type %s: %w", dbRecord.RData, dbRecord.Type, convErr)
+		return nil, 0, fmt.Errorf("failed to convert RData string '%s' for type %s: %w", dbRecord.RData, dbRecord.Type, convErr)
 	}
 	d.logger.Info("RData successfully converted", "packed_len", len(packedRData))
 
@@ -50,5 +50,5 @@ func (d *MySQLDriver) LookupRecordForDNSQuery(rname string, rtype uint16, rclass
 		Class: rclass,
 		TTL:   dbRecord.TTL,
 		RData: packedRData,
-	}, nil
+	}, 0, nil
 }

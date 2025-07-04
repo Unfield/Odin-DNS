@@ -1,5 +1,7 @@
 package models
 
+import "time"
+
 // GenericErrorResponse represents a standard error response
 type GenericErrorResponse struct {
 	Error        bool   `json:"error" example:"true" description:"Indicates if an error occurred"`
@@ -43,4 +45,35 @@ type GetUserResponse struct {
 	ID       string `json:"id" example:"V1StGXR8_Z5jdHi6B-myT" description:"Unique user identifier"`
 	Username string `json:"username" example:"john_doe" description:"User's username"`
 	Email    string `json:"email" example:"john@example.com" description:"User's email address"`
+}
+
+// TimeSeriesData for monthly, daily, and QPM charts
+type TimeSeriesData struct {
+	Time       time.Time `json:"time" example:"2025-01-01T00:00:00Z"`
+	Requests   uint64    `json:"requests" example:"1234"`
+	Errors     int64     `json:"errors" example:"5"`
+	Percentage float64   `json:"percentage,omitempty" example:"95.5"`
+}
+
+// GlobalAvgMetrics for overall summary statistics
+type GlobalAvgMetrics struct {
+	AvgResponseTimeMs        float64 `json:"avgResponseTimeMs" example:"25.34"`
+	AvgSuccessResponseTimeMs float64 `json:"avgSuccessResponseTimeMs" example:"20.15"`
+	AvgErrorResponseTimeMs   float64 `json:"avgErrorResponseTimeMs" example:"150.88"`
+	CacheHitPercentage       float64 `json:"cacheHitPercentage" example:"85.23"`
+	TotalRequests            uint64  `json:"totalRequests" example:"100000"`
+	TotalErrors              uint64  `json:"totalErrors" example:"500"`
+}
+
+// TopNData for top domains, IPs, etc.
+type TopNData struct {
+	Name  string `json:"name" example:"example.com"`
+	Count uint64 `json:"count" example:"5000"`
+}
+
+// RcodeData for DNS RCODE distribution
+type RcodeData struct {
+	Rcode     uint8  `json:"rcode" example:"3"`
+	Count     uint64 `json:"count" example:"150"`
+	RcodeName string `json:"rcodeName" example:"NXDOMAIN"`
 }

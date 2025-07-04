@@ -25,5 +25,5 @@ type Driver interface {
 	GetFullZone(name string) (*types.DBZone, []types.DBRecord, error)
 	GetFullZoneById(id string) (*types.DBZone, []types.DBRecord, error)
 
-	LookupRecordForDNSQuery(rname string, rtype uint16, rclass uint16) (*odintypes.DNSRecord, error)
+	LookupRecordForDNSQuery(rname string, rtype uint16, rclass uint16) (*odintypes.DNSRecord, uint8, error)
 }

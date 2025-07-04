@@ -11,6 +11,7 @@ import (
 	"github.com/Unfield/Odin-DNS/internal/config"
 	mysql "github.com/Unfield/Odin-DNS/internal/datastore/MySQL"
 	redis "github.com/Unfield/Odin-DNS/internal/datastore/Redis"
+	"github.com/Unfield/Odin-DNS/internal/metrics"
 )
 
 func StartRouter(config *config.Config) {
@@ -26,13 +27,28 @@ func StartRouter(config *config.Config) {
 
 	cacheDriver := redis.NewRedisCacheDriver(mysqlDriver, config.REDIS_HOST, config.REDIS_USERNAME, config.REDIS_PASSWORD, config.REDIS_DATABASE)
 
+	logger.Info("Initializing metrics query driver...")
+	queryDriver := metrics.NewClickHouseQueryDriver(config)
+	logger.Info("Metrics query driver initialized.")
+	defer func() {
+		logger.Info("Closing query driver...")
+		if closeErr := queryDriver.Close(); closeErr != nil {
+			logger.Error("Error closing query driver", "error", closeErr)
+		} else {
+			logger.Info("Query driver closed successfully.")
+		}
+	}()
+
 	corsConfig := middleware.CORSConfig{
-		AllowedOrigins:   []string{"*"},
+		AllowedOrigins: []string{
+			"http://127.0.0.1:8080",
+			"http://localhost:8080",
+		},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization", "X-Requested-With", "Accept"},
 		ExposedHeaders:   []string{"X-Request-ID"},
 		AllowCredentials: true,
-		MaxAge:           3600,
+		MaxAge:           86400,
 	}
 
 	chain := middleware.New(
@@ -52,17 +68,38 @@ func StartRouter(config *config.Config) {
 
 	mux.HandleFunc("GET /health", chain.ThenFunc(HealthCheckHandler).ServeHTTP)
 
-	// Swagger UI
 	mux.Handle("GET /swagger/", chain.Then(middleware.SwaggerHandler()))
 	mux.HandleFunc("GET /swagger", chain.ThenFunc(middleware.SwaggerRedirect).ServeHTTP)
 	logger.Info("Swagger UI enabled", "url", fmt.Sprintf("http://%s:%d/swagger/", config.API_HOST, config.API_PORT))
 
 	handler := NewHandler(mysqlDriver, config)
 
+	optionsPassthroughHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		logger.Info("Router: OPTIONS passthrough handler hit", "path", r.URL.Path)
+	})
+
+	mux.Handle("OPTIONS /api/v1/login", chain.Then(optionsPassthroughHandler))
 	mux.Handle("POST /api/v1/login", apiChain.ThenFunc(http.HandlerFunc(handler.LoginHandler)))
+	mux.Handle("OPTIONS /api/v1/register", chain.Then(optionsPassthroughHandler))
 	mux.Handle("POST /api/v1/register", apiChain.ThenFunc(http.HandlerFunc(handler.RegisterHandler)))
+	mux.Handle("OPTIONS /api/v1/logout", chain.Then(optionsPassthroughHandler))
 	mux.Handle("POST /api/v1/logout", protectedChain.ThenFunc(http.HandlerFunc(handler.LogoutHandler)))
+	mux.Handle("OPTIONS /api/v1/user/{session_id}", chain.Then(optionsPassthroughHandler))
 	mux.Handle("GET /api/v1/user/{session_id}", protectedChain.ThenFunc(http.HandlerFunc(handler.GetUserHandler)))
+
+	metricsHandler := NewMetricsHandler(config, logger, queryDriver)
+	mux.Handle("OPTIONS /api/v1/metrics/requests/errors/monthly", chain.Then(optionsPassthroughHandler))
+	mux.Handle("GET /api/v1/metrics/requests/errors/monthly", protectedChain.ThenFunc(http.HandlerFunc(metricsHandler.GetMonthlyRequestsErrorsHandler)))
+	mux.Handle("OPTIONS /api/v1/metrics/requests/errors/daily", chain.Then(optionsPassthroughHandler))
+	mux.Handle("GET /api/v1/metrics/requests/errors/daily", protectedChain.ThenFunc(http.HandlerFunc(metricsHandler.GetDailyRequestsErrorsHandler)))
+	mux.Handle("OPTIONS /api/v1/metrics/summary", chain.Then(optionsPassthroughHandler))
+	mux.Handle("GET /api/v1/metrics/summary", protectedChain.ThenFunc(http.HandlerFunc(metricsHandler.GetOverallSummaryMetricsHandler)))
+	mux.Handle("OPTIONS /api/v1/metrics/top-domains", chain.Then(optionsPassthroughHandler))
+	mux.Handle("GET /api/v1/metrics/top-domains", protectedChain.ThenFunc(http.HandlerFunc(metricsHandler.GetTopDomainsHandler)))
+	mux.Handle("OPTIONS /api/v1/metrics/rcode-distribution", chain.Then(optionsPassthroughHandler))
+	mux.Handle("GET /api/v1/metrics/rcode-distribution", protectedChain.ThenFunc(http.HandlerFunc(metricsHandler.GetRcodeDistributionHandler)))
+	mux.Handle("OPTIONS /api/v1/metrics/qpm", chain.Then(optionsPassthroughHandler))
+	mux.Handle("GET /api/v1/metrics/qpm", protectedChain.ThenFunc(http.HandlerFunc(metricsHandler.GetQPMHandler)))
 
 	/*
 		// Zone management routes

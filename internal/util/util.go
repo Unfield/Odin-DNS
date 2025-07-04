@@ -87,6 +87,14 @@ func ParseType(typeCode uint16) (string, error) {
 	}
 }
 
+func ParseTypeOrNA(typeCode uint16) string {
+	pt, err := ParseType(typeCode)
+	if err != nil {
+		return "N/A"
+	}
+	return pt
+}
+
 func ParseClass(classCode uint16) (string, error) {
 	switch classCode {
 	case 1:
