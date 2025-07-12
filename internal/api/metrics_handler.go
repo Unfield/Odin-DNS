@@ -4,20 +4,18 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/Unfield/Odin-DNS/internal/models" // Assuming your models are here
-	// Assuming metrics.MetricsQueryDriver and types are here
+	"github.com/Unfield/Odin-DNS/internal/models"
 	"github.com/Unfield/Odin-DNS/internal/util"
 )
 
-// GetMonthlyRequestsErrorsHandler retrieves monthly DNS requests and errors data.
-// @Summary Get Monthly DNS Metrics
-// @Description Retrieves aggregated data for total DNS requests and errors per month.
-// @Tags /api/v1/metrics
-// @Produce json
+// GetMonthlyRequestsErrorsHandler retrieves monthly requests and errors data
+// @Summary Get Monthly Requests and Errors
+// @Description Returns time series data for monthly DNS requests and errors
+// @Tags metrics
 // @Security BearerAuth
-// @Success 200 {array} models.TimeSeriesData "Monthly DNS requests and errors data"
-// @Failure 401 {object} models.GenericErrorResponse "Unauthorized - invalid or missing session token"
-// @Failure 500 {object} models.GenericErrorResponse "Internal server error"
+// @Produce json
+// @Success 200 {array} models.TimeSeriesData "Monthly requests and errors data retrieved successfully"
+// @Failure 500 {object} models.GenericErrorResponse "Failed to retrieve monthly requests and errors data"
 // @Router /api/v1/metrics/requests/errors/monthly [get]
 func (h *MetricsHandler) GetMonthlyRequestsErrorsHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := h.metricsQueryDriver.GetMonthlyRequestsErrors()
@@ -31,15 +29,14 @@ func (h *MetricsHandler) GetMonthlyRequestsErrorsHandler(w http.ResponseWriter, 
 	util.RespondWithJSON(w, http.StatusOK, data)
 }
 
-// GetDailyRequestsErrorsHandler retrieves daily DNS requests and errors data.
-// @Summary Get Daily DNS Metrics
-// @Description Retrieves aggregated data for total DNS requests and errors per day.
-// @Tags /api/v1/metrics
-// @Produce json
+// GetDailyRequestsErrorsHandler retrieves daily requests and errors data
+// @Summary Get Daily Requests and Errors
+// @Description Returns time series data for daily DNS requests and errors
+// @Tags metrics
 // @Security BearerAuth
-// @Success 200 {array} models.TimeSeriesData "Daily DNS requests and errors data"
-// @Failure 401 {object} models.GenericErrorResponse "Unauthorized - invalid or missing session token"
-// @Failure 500 {object} models.GenericErrorResponse "Internal server error"
+// @Produce json
+// @Success 200 {array} models.TimeSeriesData "Daily requests and errors data retrieved successfully"
+// @Failure 500 {object} models.GenericErrorResponse "Failed to retrieve daily requests and errors data"
 // @Router /api/v1/metrics/requests/errors/daily [get]
 func (h *MetricsHandler) GetDailyRequestsErrorsHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := h.metricsQueryDriver.GetDailyRequestsErrors()
@@ -53,16 +50,15 @@ func (h *MetricsHandler) GetDailyRequestsErrorsHandler(w http.ResponseWriter, r 
 	util.RespondWithJSON(w, http.StatusOK, data)
 }
 
-// GetOverallSummaryMetricsHandler retrieves overall summary metrics for DNS operations.
-// @Summary Get Overall DNS Summary Metrics
-// @Description Retrieves a single object containing aggregated summary metrics like average response times, cache hit percentage, total requests, and total errors for a specified time period.
-// @Tags /api/v1/metrics
-// @Produce json
+// GetOverallSummaryMetricsHandler retrieves overall summary metrics
+// @Summary Get Overall Summary Metrics
+// @Description Returns overall summary metrics including response times, cache hit rates, and request counts
+// @Tags metrics
 // @Security BearerAuth
-// @Param hours query int false "Number of hours to look back for metrics (default: 24)" default(24) minimum(1) maximum(8760)
-// @Success 200 {object} models.GlobalAvgMetrics "Overall DNS summary metrics"
-// @Failure 401 {object} models.GenericErrorResponse "Unauthorized - invalid or missing session token"
-// @Failure 500 {object} models.GenericErrorResponse "Internal server error"
+// @Produce json
+// @Param hours query int false "Number of hours to look back (default: 24)" default(24)
+// @Success 200 {object} models.GlobalAvgMetrics "Overall summary metrics retrieved successfully"
+// @Failure 500 {object} models.GenericErrorResponse "Failed to retrieve overall summary metrics"
 // @Router /api/v1/metrics/summary [get]
 func (h *MetricsHandler) GetOverallSummaryMetricsHandler(w http.ResponseWriter, r *http.Request) {
 	hours, err := strconv.Atoi(r.URL.Query().Get("hours"))
@@ -80,20 +76,19 @@ func (h *MetricsHandler) GetOverallSummaryMetricsHandler(w http.ResponseWriter, 
 	util.RespondWithJSON(w, http.StatusOK, data)
 }
 
-// GetTopDomainsHandler retrieves the top N most queried domains.
-// @Summary Get Top Queried Domains
-// @Description Retrieves a list of the top N most frequently queried domains, sorted by count in descending order. Default limit is 10.
-// @Tags /api/v1/metrics
-// @Produce json
-// @Param limit query int false "Number of top domains to retrieve" default(10) example(5)
+// GetTopDomainsHandler retrieves top queried domains
+// @Summary Get Top Domains
+// @Description Returns the most frequently queried domains
+// @Tags metrics
 // @Security BearerAuth
-// @Success 200 {array} models.TopNData "List of top domains and their query counts"
-// @Failure 401 {object} models.GenericErrorResponse "Unauthorized - invalid or missing session token"
-// @Failure 500 {object} models.GenericErrorResponse "Internal server error"
+// @Produce json
+// @Param limit query int false "Number of top domains to return (default: 10)" default(10)
+// @Success 200 {array} models.TopNData "Top domains retrieved successfully"
+// @Failure 500 {object} models.GenericErrorResponse "Failed to retrieve top domains"
 // @Router /api/v1/metrics/top-domains [get]
 func (h *MetricsHandler) GetTopDomainsHandler(w http.ResponseWriter, r *http.Request) {
 	limitStr := r.URL.Query().Get("limit")
-	limit := 10 // Default limit
+	limit := 10
 	if limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
 			limit = l
@@ -111,15 +106,14 @@ func (h *MetricsHandler) GetTopDomainsHandler(w http.ResponseWriter, r *http.Req
 	util.RespondWithJSON(w, http.StatusOK, data)
 }
 
-// GetRcodeDistributionHandler retrieves the distribution of DNS response codes.
+// GetRcodeDistributionHandler retrieves RCODE distribution data
 // @Summary Get RCODE Distribution
-// @Description Retrieves the count of queries for each DNS response code (e.g., NOERROR, NXDOMAIN, SERVFAIL).
-// @Tags /api/v1/metrics
-// @Produce json
+// @Description Returns the distribution of DNS response codes
+// @Tags metrics
 // @Security BearerAuth
-// @Success 200 {array} models.RcodeData "List of RCODEs and their counts"
-// @Failure 401 {object} models.GenericErrorResponse "Unauthorized - invalid or missing session token"
-// @Failure 500 {object} models.GenericErrorResponse "Internal server error"
+// @Produce json
+// @Success 200 {array} models.RcodeData "RCODE distribution data retrieved successfully"
+// @Failure 500 {object} models.GenericErrorResponse "Failed to retrieve RCODE distribution data"
 // @Router /api/v1/metrics/rcode-distribution [get]
 func (h *MetricsHandler) GetRcodeDistributionHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := h.metricsQueryDriver.GetRcodeDistribution()
@@ -133,15 +127,14 @@ func (h *MetricsHandler) GetRcodeDistributionHandler(w http.ResponseWriter, r *h
 	util.RespondWithJSON(w, http.StatusOK, data)
 }
 
-// GetQPMHandler retrieves queries per minute (QPM) data.
-// @Summary Get Queries Per Minute (QPM)
-// @Description Retrieves aggregated data for the number of DNS queries per minute over a recent period.
-// @Tags /api/v1/metrics
-// @Produce json
+// GetQPMHandler retrieves queries per minute data
+// @Summary Get Queries Per Minute
+// @Description Returns time series data for queries per minute
+// @Tags metrics
 // @Security BearerAuth
-// @Success 200 {array} models.TimeSeriesData "Queries per minute data"
-// @Failure 401 {object} models.GenericErrorResponse "Unauthorized - invalid or missing session token"
-// @Failure 500 {object} models.GenericErrorResponse "Internal server error"
+// @Produce json
+// @Success 200 {array} models.TimeSeriesData "Queries per minute data retrieved successfully"
+// @Failure 500 {object} models.GenericErrorResponse "Failed to retrieve queries per minute data"
 // @Router /api/v1/metrics/qpm [get]
 func (h *MetricsHandler) GetQPMHandler(w http.ResponseWriter, r *http.Request) {
 	data, err := h.metricsQueryDriver.GetQPM()

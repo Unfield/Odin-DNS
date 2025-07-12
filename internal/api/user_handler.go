@@ -13,16 +13,16 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
-// LoginHandler authenticates a user and creates a session
+// LoginHandler handles user authentication
 // @Summary User Login
-// @Description Authenticates a user with username and password, returns session token
+// @Description Authenticates a user and returns a session token
 // @Tags authentication
 // @Accept json
 // @Produce json
-// @Param login body models.LoginRequest true "Login credentials"
-// @Success 200 {object} models.LoginResponse "Successful login"
-// @Failure 400 {object} models.GenericErrorResponse "Bad request - invalid input"
-// @Failure 401 {object} models.GenericErrorResponse "Unauthorized - invalid credentials"
+// @Param loginRequest body models.LoginRequest true "Login credentials"
+// @Success 200 {object} models.LoginResponse "Login successful"
+// @Failure 400 {object} models.GenericErrorResponse "Invalid request body or missing credentials"
+// @Failure 401 {object} models.GenericErrorResponse "Invalid username or password"
 // @Failure 500 {object} models.GenericErrorResponse "Internal server error"
 // @Router /api/v1/login [post]
 func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -90,15 +90,15 @@ func (h *Handler) LoginHandler(w http.ResponseWriter, r *http.Request) {
 	util.RespondWithJSON(w, http.StatusOK, &models.LoginResponse{SessionID: session.ID, Token: session.Token, Username: user.Username})
 }
 
-// RegisterHandler creates a new user account
+// RegisterHandler handles user registration
 // @Summary User Registration
-// @Description Creates a new user account with username, email, and password
+// @Description Creates a new user account
 // @Tags authentication
 // @Accept json
 // @Produce json
-// @Param register body models.RegisterRequest true "Registration details"
+// @Param registerRequest body models.RegisterRequest true "Registration details"
 // @Success 201 {object} models.RegisterResponse "User created successfully"
-// @Failure 400 {object} models.GenericErrorResponse "Bad request - invalid input or passwords don't match"
+// @Failure 400 {object} models.GenericErrorResponse "Invalid request body, missing fields, or passwords don't match"
 // @Failure 500 {object} models.GenericErrorResponse "Internal server error"
 // @Router /api/v1/register [post]
 func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
@@ -149,14 +149,14 @@ func (h *Handler) RegisterHandler(w http.ResponseWriter, r *http.Request) {
 	util.RespondWithJSON(w, http.StatusCreated, &models.RegisterResponse{ID: user.ID, Username: user.Username})
 }
 
-// LogoutHandler terminates the current user session
+// LogoutHandler handles user logout
 // @Summary User Logout
-// @Description Invalidates the current user session, requiring re-authentication
+// @Description Invalidates the user's session
 // @Tags authentication
-// @Produce json
 // @Security BearerAuth
-// @Success 200 {object} models.LogoutResponse "Successfully logged out"
-// @Failure 401 {object} models.GenericErrorResponse "Unauthorized - invalid or missing token"
+// @Produce json
+// @Success 200 {object} models.LogoutResponse "Logout successful"
+// @Failure 401 {object} models.GenericErrorResponse "Unauthorized - invalid session"
 // @Failure 500 {object} models.GenericErrorResponse "Internal server error"
 // @Router /api/v1/logout [post]
 func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -191,13 +191,13 @@ func (h *Handler) LogoutHandler(w http.ResponseWriter, r *http.Request) {
 	util.RespondWithJSON(w, http.StatusOK, &models.LogoutResponse{Message: "Successfully logged out"})
 }
 
-// GetUserHandler retrieves the current user's information
+// GetUserHandler retrieves user information
 // @Summary Get User Information
-// @Description Retrieves the authenticated user's profile information
+// @Description Returns information about the authenticated user
 // @Tags user
-// @Produce json
 // @Security BearerAuth
-// @Param session_id path string true "Session ID" example:"V1StGXR8_Z5jdHi6B-myT"
+// @Produce json
+// @Param session_id path string true "Session ID"
 // @Success 200 {object} models.GetUserResponse "User information retrieved successfully"
 // @Failure 401 {object} models.GenericErrorResponse "Unauthorized - invalid or expired session"
 // @Failure 500 {object} models.GenericErrorResponse "Internal server error"

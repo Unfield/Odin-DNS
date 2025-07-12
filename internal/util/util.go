@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 
 	"github.com/Unfield/Odin-DNS/pkg/odintypes"
 )
@@ -217,4 +219,13 @@ func RespondWithJSON(w http.ResponseWriter, status int, data any) {
 	if err := json.NewEncoder(w).Encode(data); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
+}
+
+func ConvertMXRData(rdata string) (uint16, string, error) {
+	splitted := strings.Split(rdata, " ")
+	prio, err := strconv.Atoi(splitted[0])
+	if err != nil {
+		return 0, "", err
+	}
+	return uint16(prio), splitted[1], nil
 }

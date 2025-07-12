@@ -1,3 +1,19 @@
+// Package api provides the REST API for Odin DNS management system
+// @title Odin DNS API
+// @version 1.0
+// @description REST API for managing DNS zones and records, with comprehensive metrics and monitoring
+// @termsOfService http://swagger.io/terms/
+// @contact.name API Support
+// @contact.email support@odin-dns.com
+// @license.name MIT
+// @license.url https://opensource.org/licenses/MIT
+// @host localhost:8080
+// @BasePath /
+// @schemes http https
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description Enter the token with the `Bearer: ` prefix, e.g. "Bearer abcde12345".
 package api
 
 import (
@@ -40,10 +56,7 @@ func StartRouter(config *config.Config) {
 	}()
 
 	corsConfig := middleware.CORSConfig{
-		AllowedOrigins: []string{
-			"http://127.0.0.1:8080",
-			"http://localhost:8080",
-		},
+		AllowedOrigins:   config.CORS_ORIGINS,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "Authorization", "X-Requested-With", "Accept"},
 		ExposedHeaders:   []string{"X-Request-ID"},
@@ -101,14 +114,14 @@ func StartRouter(config *config.Config) {
 	mux.Handle("OPTIONS /api/v1/metrics/qpm", chain.Then(optionsPassthroughHandler))
 	mux.Handle("GET /api/v1/metrics/qpm", protectedChain.ThenFunc(http.HandlerFunc(metricsHandler.GetQPMHandler)))
 
-	/*
-		// Zone management routes
-		mux.Handle("POST /api/v1/zone", protectedChain.ThenFunc(http.HandlerFunc(handler.CreateZoneHandler)))
-		mux.Handle("GET /api/v1/zone/records/{session_id}", protectedChain.ThenFunc(http.HandlerFunc(handler.GetZoneRecordsHandler)))
-		mux.Handle("DELETE /api/v1/zone", protectedChain.ThenFunc(http.HandlerFunc(handler.DeleteZoneHandler)))
-		// Record management routes
-		mux.Handle("POST /api/v1/record", protectedChain.ThenFunc(http.HandlerFunc(handler.CreateRecordHandler)))
-	*/
+	mux.Handle("OPTIONS /api/v1/zones", chain.Then(optionsPassthroughHandler))
+	mux.Handle("GET /api/v1/zones", protectedChain.ThenFunc(http.HandlerFunc(handler.GetZonesHandler)))
+	mux.Handle("POST /api/v1/zones", protectedChain.ThenFunc(http.HandlerFunc(handler.CreateZoneHandler)))
+	mux.Handle("OPTIONS /api/v1/zone/{zone_id}/entries", chain.Then(optionsPassthroughHandler))
+	mux.Handle("GET /api/v1/zone/{zone_id}/entries", protectedChain.ThenFunc(http.HandlerFunc(handler.GetZoneRecordsHandler)))
+	mux.Handle("POST /api/v1/zone/{zone_id}/entries", protectedChain.ThenFunc(http.HandlerFunc(handler.CreateZoneEntryHandler)))
+	mux.Handle("OPTIONS /api/v1/zone/{zone_id}/entry/{entry_id}", chain.Then(optionsPassthroughHandler))
+	mux.Handle("PUT /api/v1/zone/{zone_id}/entry/{entry_id}", protectedChain.ThenFunc(http.HandlerFunc(handler.UpdateZoneEntryHandler)))
 
 	logger.Info("Odin DNS API running", "port", config.API_PORT)
 	http.ListenAndServe(fmt.Sprintf("%s:%d", config.API_HOST, config.API_PORT), mux)
