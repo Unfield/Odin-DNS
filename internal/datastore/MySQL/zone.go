@@ -122,3 +122,25 @@ func (d *MySQLDriver) UpdateRecord(record *types.DBRecord) error {
 	}
 	return nil
 }
+
+func (d *MySQLDriver) GetZones(owner string) ([]types.DBZone, error) {
+	query := "SELECT id, owner, name, created_at, updated_at, deleted_at FROM zones WHERE owner = ? AND (deleted_at > NOW() OR deleted_at IS NULL)"
+	var zones []types.DBZone
+	err := d.db.Select(&zones, query, owner)
+	if err != nil {
+		d.logger.Error("Failed to get zones", "error", err)
+		return nil, err
+	}
+	return zones, nil
+}
+
+func (d *MySQLDriver) GetZoneEntries(zoneId string) ([]types.DBRecord, error) {
+	query := "SELECT id, zone_id, name, type, class, ttl, rdata, created_at, updated_at, deleted_at FROM zone_entries WHERE zone_id = ? AND (deleted_at > NOW() OR deleted_at IS NULL)"
+	var entries []types.DBRecord
+	err := d.db.Select(&entries, query, zoneId)
+	if err != nil {
+		d.logger.Error("Failed to get entries", "error", err)
+		return nil, err
+	}
+	return entries, nil
+}

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -21,6 +22,8 @@ type Config struct {
 	REDIS_USERNAME string `json:"redis_username" yaml:"redis_username" xml:"redis_username"`
 	REDIS_PASSWORD string `json:"redis_password" yaml:"redis_password" xml:"redis_password"`
 	REDIS_DATABASE int    `json:"redis_database" yaml:"redis_database" xml:"redis_database"`
+
+	CORS_ORIGINS []string `json:"cors_origins" yaml:"cors_origins" xml:"cors_origins"`
 
 	CLICKHOUSE_HOST               string        `json:"clickhouse_host" yaml:"clickhouse_host" xml:"clickhouse_host"`
 	CLICKHOUSE_DATABASE           string        `json:"clickhouse_database" yaml:"clickhouse_database" xml:"clickhouse_database"`
@@ -52,11 +55,33 @@ func DefaultConfig() *Config {
 		CLICKHOUSE_TIMEOUT:            30,
 		CLICKHOUSE_MAX_BATCH_SIZE:     1000,
 		CLICKHOUSE_BATCH_INTERVAL:     5,
+		CORS_ORIGINS:                  []string{},
 	}
 }
 
 func LoadConfig() (*Config, error) {
 	cfg := DefaultConfig()
+
+	formatCorsString := func(input string) []string {
+		if input == "" {
+			return []string{}
+		}
+
+		var result []string
+		for _, part := range strings.Split(input, ",") {
+			if trimmed := strings.TrimSpace(part); trimmed != "" {
+				result = append(result, trimmed)
+			}
+		}
+		return result
+	}
+
+	getCorsArray := func(envVar string, defaultValue []string) []string {
+		if value := os.Getenv(envVar); value != "" {
+			return formatCorsString(value)
+		}
+		return defaultValue
+	}
 
 	getString := func(envVar string, defaultValue string) string {
 		if value := os.Getenv(envVar); value != "" {
@@ -106,6 +131,8 @@ func LoadConfig() (*Config, error) {
 	cfg.API_ENABLED, err = getBool("ODIN_API_ENABLED", cfg.API_ENABLED)
 	cfg.API_PORT, err = getInt("ODIN_API_PORT", cfg.API_PORT)
 	cfg.API_HOST = getString("ODIN_API_HOST", cfg.API_HOST)
+
+	cfg.CORS_ORIGINS = getCorsArray("ODIN_CORS_ORIGINS", cfg.CORS_ORIGINS)
 
 	cfg.MySQL_DSN = getString("ODIN_MYSQL_DSN", cfg.MySQL_DSN)
 
