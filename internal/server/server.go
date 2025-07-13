@@ -38,7 +38,7 @@ func StartServer(config *config.Config) {
 
 	cacheDriver := redis.NewRedisCacheDriver(mysqlDriver, config.REDIS_HOST, config.REDIS_USERNAME, config.REDIS_PASSWORD, config.REDIS_DATABASE)
 
-	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf(":%d", config.DNS_PORT))
+	addr, err := net.ResolveUDPAddr("udp", fmt.Sprintf("%s:%d", config.DNS_HOST, config.DNS_PORT))
 	if err != nil {
 		logger.Error("Error resolving address", "port", config.DNS_PORT, "error", err)
 		return

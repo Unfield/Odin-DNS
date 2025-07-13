@@ -9,8 +9,9 @@ import (
 )
 
 type Config struct {
-	DNS_PORT    int `json:"dns_port" yaml:"dns_port" xml:"dns_port"`
-	BUFFER_SIZE int `json:"buffer_size" yaml:"buffer_size" xml:"buffer_size"`
+	DNS_PORT    int    `json:"dns_port" yaml:"dns_port" xml:"dns_port"`
+	DNS_HOST    string `json:"dns_host" yaml:"dns_host" xml:"dns_host"`
+	BUFFER_SIZE int    `json:"buffer_size" yaml:"buffer_size" xml:"buffer_size"`
 
 	API_ENABLED bool   `json:"api_enabled" yaml:"api_enabled" xml:"api_enabled"`
 	API_PORT    int    `json:"api_port" yaml:"api_port" xml:"api_port"`
@@ -38,6 +39,7 @@ type Config struct {
 func DefaultConfig() *Config {
 	return &Config{
 		DNS_PORT:                      53,
+		DNS_HOST:                      "127.0.0.1",
 		BUFFER_SIZE:                   512,
 		API_ENABLED:                   true,
 		API_PORT:                      8080,
@@ -126,6 +128,7 @@ func LoadConfig() (*Config, error) {
 	var err error
 
 	cfg.DNS_PORT, err = getInt("ODIN_DNS_PORT", cfg.DNS_PORT)
+	cfg.DNS_HOST = getString("ODIN_DNS_HOST", cfg.DNS_HOST)
 	cfg.BUFFER_SIZE, err = getInt("ODIN_BUFFER_SIZE", cfg.BUFFER_SIZE)
 
 	cfg.API_ENABLED, err = getBool("ODIN_API_ENABLED", cfg.API_ENABLED)
