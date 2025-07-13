@@ -42,7 +42,7 @@ func DefaultConfig() *Config {
 		API_ENABLED:                   true,
 		API_PORT:                      8080,
 		API_HOST:                      "127.0.0.1",
-		MySQL_DSN:                     "admin:admin@tcp(127.0.0.1:3306)/odindns?parseTime=true",
+		MySQL_DSN:                     "",
 		REDIS_HOST:                    "localhost:6379",
 		REDIS_USERNAME:                "default",
 		REDIS_PASSWORD:                "",
