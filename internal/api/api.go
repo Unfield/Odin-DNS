@@ -119,7 +119,6 @@ func StartRouter(config *config.Config) {
 	mux.Handle("OPTIONS /api/v1/zones", chain.Then(optionsPassthroughHandler))
 	mux.Handle("GET /api/v1/zones", protectedChain.ThenFunc(http.HandlerFunc(handler.GetZonesHandler)))
 	mux.Handle("POST /api/v1/zones", protectedChain.ThenFunc(http.HandlerFunc(handler.CreateZoneHandler)))
-	mux.Handle("OPTIONS /api/v1/zone/{zone_id}", chain.Then(optionsPassthroughHandler))
 	mux.Handle("DELETE /api/v1/zone/{zone_id}", protectedChain.ThenFunc(http.HandlerFunc(handler.DeleteZoneHandler)))
 	mux.Handle("OPTIONS /api/v1/zone/{zone_id}/entries", chain.Then(optionsPassthroughHandler))
 	mux.Handle("GET /api/v1/zone/{zone_id}/entries", protectedChain.ThenFunc(http.HandlerFunc(handler.GetZoneRecordsHandler)))
