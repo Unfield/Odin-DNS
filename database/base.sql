@@ -42,6 +42,7 @@ CREATE TABLE IF NOT EXISTS zone_entries (
     class VARCHAR(16) NOT NULL,
     ttl INT NOT NULL DEFAULT 3600,
     rdata TEXT NOT NULL,
+    rdata_hash VARCHAR(64) GENERATED ALWAYS AS (SHA2 (rdata, 256)) STORED,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted_at TIMESTAMP NULL DEFAULT NULL,
@@ -51,3 +52,5 @@ CREATE TABLE IF NOT EXISTS zone_entries (
 CREATE INDEX idx_zone_entries_zone_id ON zone_entries (zone_id);
 
 CREATE INDEX idx_zone_entries_name ON zone_entries (name);
+
+CREATE UNIQUE INDEX idx_entry_name_type_rdata_hash ON zone_entries (name, type, rdata_hash);

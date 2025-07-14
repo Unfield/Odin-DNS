@@ -129,3 +129,11 @@ type UpdateZoneEntryRequest struct {
 type UpdateZoneEntryResponse struct {
 	Id string `json:"id"`
 }
+
+type DeleteZoneEntryResponse struct {
+	Id string `json:"id"`
+}
+
+type DeleteZoneResponse struct {
+	Id string `json:"id"`
+}

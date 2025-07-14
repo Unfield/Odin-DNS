@@ -16,12 +16,15 @@ type Driver interface {
 	CreateSession(session *types.Session) error
 	UpdateSession(session *types.Session) error
 
+	GetZone(id string) (*types.DBZone, error)
 	CreateZone(zone *types.DBZone) error
 	UpdateZone(zone *types.DBZone) error
+	DeleteZone(id string) error
 	GetRecord(id string) (*types.DBRecord, error)
 	GetRecordByName(name string) (*types.DBRecord, error)
 	CreateRecord(record *types.DBRecord) error
 	UpdateRecord(record *types.DBRecord) error
+	DeleteRecord(id string) error
 	GetFullZone(name string) (*types.DBZone, []types.DBRecord, error)
 	GetFullZoneById(id string) (*types.DBZone, []types.DBRecord, error)
 

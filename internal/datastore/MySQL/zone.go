@@ -4,6 +4,21 @@ import (
 	"github.com/Unfield/Odin-DNS/internal/types"
 )
 
+func (d *MySQLDriver) GetZone(id string) (*types.DBZone, error) {
+	query := "SELECT id, owner, name, created_at, updated_at FROM zones WHERE id = ?"
+	var zone types.DBZone
+	err := d.db.Get(&zone, query, id)
+	if err != nil {
+		if err.Error() == "sql: no rows in result set" {
+			d.logger.Info("Zone not found", "id", id)
+			return nil, nil
+		}
+		d.logger.Error("Failed to get zone", "error", err)
+		return nil, err
+	}
+	return &zone, nil
+}
+
 func (d *MySQLDriver) CreateZone(zone *types.DBZone) (err error) {
 	query := "INSERT INTO zones (id, owner, name, created_at, updated_at) VALUES (?, ?, ?, ?, ?)"
 
@@ -20,6 +35,16 @@ func (d *MySQLDriver) UpdateZone(zone *types.DBZone) error {
 	_, err := d.db.Exec(query, zone.Name, zone.UpdatedAt, zone.DeletedAt, zone.ID)
 	if err != nil {
 		d.logger.Error("Failed to update zone", "error", err)
+		return err
+	}
+	return nil
+}
+
+func (d *MySQLDriver) DeleteZone(id string) error {
+	query := "DELETE FROM zones WHERE id = ?"
+	_, err := d.db.Exec(query, id)
+	if err != nil {
+		d.logger.Error("Failed to delete zone", "error", err)
 		return err
 	}
 	return nil
@@ -118,6 +143,16 @@ func (d *MySQLDriver) UpdateRecord(record *types.DBRecord) error {
 	_, err := d.db.Exec(query, record.ZoneID, record.Name, record.Type, record.Class, record.TTL, record.RData, record.ID)
 	if err != nil {
 		d.logger.Error("Failed to update record", "error", err)
+		return err
+	}
+	return nil
+}
+
+func (d *MySQLDriver) DeleteRecord(id string) error {
+	query := "DELETE FROM zone_entries WHERE id = ?"
+	_, err := d.db.Exec(query, id)
+	if err != nil {
+		d.logger.Error("Failed to delete record", "error", err)
 		return err
 	}
 	return nil

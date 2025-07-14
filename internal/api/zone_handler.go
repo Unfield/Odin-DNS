@@ -3,6 +3,7 @@ package api
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -128,6 +129,41 @@ func (h *Handler) CreateZoneHandler(w http.ResponseWriter, r *http.Request) {
 	util.RespondWithJSON(w, http.StatusOK, &models.CreateZoneResponse{Id: zone.ID})
 }
 
+// DeleteZoneHandler deletes an existing DNS zone
+// @Summary Delete DNS Record
+// @Description Delete an existing DNS zone in the specified zone
+// @Tags zones
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param zone_id path string true "Zone ID"
+// @Success 200 {object} models.DeleteZoneResponse "Zone deleted successfully"
+// @Failure 400 {object} models.GenericErrorResponse "Invalid request body"
+// @Failure 401 {object} models.GenericErrorResponse "Unauthorized - invalid session"
+// @Failure 500 {object} models.GenericErrorResponse "Failed to delete zone"
+// @Router /api/v1/zone/{zone_id} [delete]
+func (h *Handler) DeleteZoneHandler(w http.ResponseWriter, r *http.Request) {
+	userSession, sessionValid := r.Context().Value("user_session").(*types.SessionContextKey)
+	if !sessionValid || userSession.Token == "" || userSession.UserID == "" {
+		util.RespondWithJSON(w, http.StatusUnauthorized, &models.GenericErrorResponse{Error: true, ErrorMessage: "Unauthorized - invalid session"})
+		return
+	}
+
+	var zoneID = r.PathValue("zone_id")
+	if zoneID == "" {
+		util.RespondWithJSON(w, http.StatusBadRequest, &models.GenericErrorResponse{Error: true, ErrorMessage: "zone_id missing"})
+		return
+	}
+
+	err := h.store.DeleteZone(zoneID)
+	if err != nil {
+		util.RespondWithJSON(w, http.StatusInternalServerError, &models.GenericErrorResponse{Error: true, ErrorMessage: "failed to delete record"})
+		return
+	}
+
+	util.RespondWithJSON(w, http.StatusOK, &models.DeleteZoneResponse{Id: zoneID})
+}
+
 // GetZoneRecordsHandler retrieves all records for a specific zone
 // @Summary Get Zone Records
 // @Description Returns all DNS records for a specific zone
@@ -216,9 +252,15 @@ func (h *Handler) CreateZoneEntryHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	zone, err := h.store.GetZone(zoneID)
+	if err != nil {
+		util.RespondWithJSON(w, http.StatusBadRequest, &models.GenericErrorResponse{Error: true, ErrorMessage: "zone not found"})
+		return
+	}
+
 	var createZoneEntryRequest models.CreateZoneEntryRequest
 
-	err := json.NewDecoder(r.Body).Decode(&createZoneEntryRequest)
+	err = json.NewDecoder(r.Body).Decode(&createZoneEntryRequest)
 	if err != nil {
 		util.RespondWithJSON(w, http.StatusBadRequest, &models.GenericErrorResponse{Error: true, ErrorMessage: "Invalid request body"})
 		return
@@ -231,6 +273,15 @@ func (h *Handler) CreateZoneEntryHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	var rdata string
+
+	createZoneEntryRequest.Name = strings.TrimSuffix(createZoneEntryRequest.Name, ".")
+
+	if !strings.HasSuffix(createZoneEntryRequest.Name, zone.Name) {
+		createZoneEntryRequest.Name = fmt.Sprintf("%s.%s", createZoneEntryRequest.Name, zone.Name)
+	}
+
+	createZoneEntryRequest.Name = strings.TrimPrefix(createZoneEntryRequest.Name, "@")
+	createZoneEntryRequest.Name = strings.TrimPrefix(createZoneEntryRequest.Name, ".")
 
 	if createZoneEntryRequest.Type == "MX" {
 		if createZoneEntryRequest.Priority == nil {
@@ -364,4 +415,59 @@ func (h *Handler) UpdateZoneEntryHandler(w http.ResponseWriter, r *http.Request)
 	}
 
 	util.RespondWithJSON(w, http.StatusOK, &models.UpdateZoneEntryResponse{Id: entry.ID})
+}
+
+// DeleteZoneEntryHandler deletes an existing DNS record
+// @Summary Delete DNS Record
+// @Description Delete an existing DNS record in the specified zone
+// @Tags records
+// @Security BearerAuth
+// @Accept json
+// @Produce json
+// @Param zone_id path string true "Zone ID"
+// @Param entry_id path string true "Entry ID"
+// @Success 200 {object} models.DeleteZoneEntryResponse "Zone record deleted successfully"
+// @Failure 400 {object} models.GenericErrorResponse "Invalid request body"
+// @Failure 401 {object} models.GenericErrorResponse "Unauthorized - invalid session"
+// @Failure 500 {object} models.GenericErrorResponse "Failed to delete zone record"
+// @Router /api/v1/zone/{zone_id}/entry/{entry_id} [delete]
+func (h *Handler) DeleteZoneEntryHandler(w http.ResponseWriter, r *http.Request) {
+	userSession, sessionValid := r.Context().Value("user_session").(*types.SessionContextKey)
+	if !sessionValid || userSession.Token == "" || userSession.UserID == "" {
+		util.RespondWithJSON(w, http.StatusUnauthorized, &models.GenericErrorResponse{Error: true, ErrorMessage: "Unauthorized - invalid session"})
+		return
+	}
+
+	var zoneID = r.PathValue("zone_id")
+	if zoneID == "" {
+		util.RespondWithJSON(w, http.StatusBadRequest, &models.GenericErrorResponse{Error: true, ErrorMessage: "zone_id missing"})
+		return
+	}
+
+	var entryID = r.PathValue("entry_id")
+	if entryID == "" {
+		util.RespondWithJSON(w, http.StatusBadRequest, &models.GenericErrorResponse{Error: true, ErrorMessage: "entry_id missing"})
+		return
+	}
+
+	entry, err := h.store.GetRecord(entryID)
+	if err != nil {
+		util.RespondWithJSON(w, http.StatusBadRequest, &models.GenericErrorResponse{Error: true, ErrorMessage: "record not found missing"})
+		return
+	}
+
+	if entry.ZoneID != zoneID {
+		util.RespondWithJSON(w, http.StatusBadRequest, &models.GenericErrorResponse{Error: true, ErrorMessage: "record not part of that zone"})
+		return
+	}
+
+	// we would ususally check if the user has access to delete this entry but we are gonna skip it for this simple demo
+
+	err = h.store.DeleteRecord(entryID)
+	if err != nil {
+		util.RespondWithJSON(w, http.StatusInternalServerError, &models.GenericErrorResponse{Error: true, ErrorMessage: "failed to delete record"})
+		return
+	}
+
+	util.RespondWithJSON(w, http.StatusOK, &models.DeleteZoneEntryResponse{Id: entry.ID})
 }
