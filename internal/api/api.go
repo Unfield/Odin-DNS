@@ -7,7 +7,7 @@
 // @contact.email support@odin-dns.com
 // @license.name MIT
 // @license.url https://opensource.org/licenses/MIT
-// @host localhost:8080
+// @host api.odin-demo.drinkuth.online
 // @BasePath /
 // @schemes http https
 // @securityDefinitions.apikey BearerAuth
@@ -114,6 +114,8 @@ func StartRouter(config *config.Config) {
 	mux.Handle("OPTIONS /api/v1/metrics/qpm", chain.Then(optionsPassthroughHandler))
 	mux.Handle("GET /api/v1/metrics/qpm", protectedChain.ThenFunc(http.HandlerFunc(metricsHandler.GetQPMHandler)))
 
+	mux.Handle("OPTIONS /api/v1/zone/{zone_id}", chain.Then(optionsPassthroughHandler))
+	mux.Handle("GET /api/v1/zone/{zone_id}", protectedChain.ThenFunc(http.HandlerFunc(handler.GetZoneHandler)))
 	mux.Handle("OPTIONS /api/v1/zones", chain.Then(optionsPassthroughHandler))
 	mux.Handle("GET /api/v1/zones", protectedChain.ThenFunc(http.HandlerFunc(handler.GetZonesHandler)))
 	mux.Handle("POST /api/v1/zones", protectedChain.ThenFunc(http.HandlerFunc(handler.CreateZoneHandler)))

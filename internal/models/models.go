@@ -126,6 +126,12 @@ type UpdateZoneEntryRequest struct {
 	Value    string  `json:"value" example:"192.168.1.1" description:"Record value (IP address, hostname, etc.)"`
 }
 
+type GetZoneResponse struct {
+	Id    string `json:"id"`
+	Name  string `json:"name"`
+	Owner string `json:"owner"`
+}
+
 type UpdateZoneEntryResponse struct {
 	Id string `json:"id"`
 }

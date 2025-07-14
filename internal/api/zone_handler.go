@@ -16,6 +16,38 @@ import (
 	gonanoid "github.com/matoous/go-nanoid/v2"
 )
 
+// GetZoneHandler retrieves one zone by id
+// @Summary Get User Zones
+// @Description Returns one zone
+// @Tags zones
+// @Security BearerAuth
+// @Produce json
+// @Success 200 {object} models.GetZoneResponse "Zone retrieved successfully"
+// @Failure 401 {object} models.GenericErrorResponse "Unauthorized - invalid session"
+// @Failure 500 {object} models.GenericErrorResponse "Failed to get zones"
+// @Router /api/v1/zone/{zone_id} [get]
+func (h *Handler) GetZoneHandler(w http.ResponseWriter, r *http.Request) {
+	userSession, sessionValid := r.Context().Value("user_session").(*types.SessionContextKey)
+	if !sessionValid || userSession.Token == "" || userSession.UserID == "" {
+		util.RespondWithJSON(w, http.StatusUnauthorized, &models.GenericErrorResponse{Error: true, ErrorMessage: "Unauthorized - invalid session"})
+		return
+	}
+
+	var zoneID = r.PathValue("zone_id")
+	if zoneID == "" {
+		util.RespondWithJSON(w, http.StatusBadRequest, &models.GenericErrorResponse{Error: true, ErrorMessage: "zone_id missing"})
+		return
+	}
+
+	zone, err := h.store.GetZone(zoneID)
+	if err != nil {
+		util.RespondWithJSON(w, http.StatusBadRequest, &models.GenericErrorResponse{Error: true, ErrorMessage: "zone not found"})
+		return
+	}
+
+	util.RespondWithJSON(w, http.StatusOK, &models.GetZoneResponse{Id: zoneID, Name: zone.Name, Owner: zone.Owner})
+}
+
 // GetZonesHandler retrieves all zones for the authenticated user
 // @Summary Get User Zones
 // @Description Returns a list of all DNS zones owned by the authenticated user
@@ -362,15 +394,30 @@ func (h *Handler) UpdateZoneEntryHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
+	zone, err := h.store.GetZone(zoneID)
+	if err != nil {
+		util.RespondWithJSON(w, http.StatusBadRequest, &models.GenericErrorResponse{Error: true, ErrorMessage: "zone not found"})
+		return
+	}
+
 	var updateZoneEntryRequest models.UpdateZoneEntryRequest
 
-	err := json.NewDecoder(r.Body).Decode(&updateZoneEntryRequest)
+	err = json.NewDecoder(r.Body).Decode(&updateZoneEntryRequest)
 	if err != nil {
 		util.RespondWithJSON(w, http.StatusBadRequest, &models.GenericErrorResponse{Error: true, ErrorMessage: "Invalid request body"})
 		return
 	}
 
 	var rdata string
+
+	updateZoneEntryRequest.Name = strings.TrimSuffix(updateZoneEntryRequest.Name, ".")
+
+	if !strings.HasSuffix(updateZoneEntryRequest.Name, zone.Name) {
+		updateZoneEntryRequest.Name = fmt.Sprintf("%s.%s", updateZoneEntryRequest.Name, zone.Name)
+	}
+
+	updateZoneEntryRequest.Name = strings.TrimPrefix(updateZoneEntryRequest.Name, "@")
+	updateZoneEntryRequest.Name = strings.TrimPrefix(updateZoneEntryRequest.Name, ".")
 
 	if updateZoneEntryRequest.Type == "MX" {
 		if updateZoneEntryRequest.Priority == nil {
