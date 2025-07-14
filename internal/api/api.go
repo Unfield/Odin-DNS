@@ -1,19 +1,3 @@
-// Package api provides the REST API for Odin DNS management system
-// @title Odin DNS API
-// @version 1.0
-// @description REST API for managing DNS zones and records, with comprehensive metrics and monitoring
-// @termsOfService http://swagger.io/terms/
-// @contact.name API Support
-// @contact.email support@odin-dns.com
-// @license.name MIT
-// @license.url https://opensource.org/licenses/MIT
-// @host api.odin-demo.drinkuth.online
-// @BasePath /
-// @schemes http https
-// @securityDefinitions.apikey BearerAuth
-// @in header
-// @name Authorization
-// @description Enter the token with the `Bearer: ` prefix, e.g. "Bearer abcde12345".
 package api
 
 import (
