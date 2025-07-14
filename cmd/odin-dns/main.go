@@ -22,7 +22,7 @@ import (
 // @license.url https://opensource.org/licenses/MIT
 // @host api.odin-demo.drinkuth.online
 // @BasePath /
-// @schemes http https
+// @schemes https
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
