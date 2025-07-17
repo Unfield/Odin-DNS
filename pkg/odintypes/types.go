@@ -96,7 +96,8 @@ const (
 	TYPE_PTR   uint16 = 12
 	TYPE_ANY   uint16 = 255
 
-	CLASS_IN uint16 = 1
+	CLASS_IN    uint16 = 1
+	CLASS_CHAOS uint16 = 3
 )
 
 func StringToType(s string) (uint16, error) {
@@ -160,6 +161,8 @@ func StringToClass(s string) (uint16, error) {
 	switch s {
 	case "IN":
 		return CLASS_IN, nil
+	case "CHAOS":
+		return CLASS_CHAOS, nil
 	default:
 		if i, err := strconv.ParseUint(s, 10, 16); err == nil {
 			return uint16(i), nil
@@ -172,6 +175,8 @@ func ClassToString(c uint16) string {
 	switch c {
 	case CLASS_IN:
 		return "IN"
+	case CLASS_CHAOS:
+		return "CHAOS"
 	default:
 		return fmt.Sprintf("CLASS%d", c)
 	}
