@@ -134,6 +134,7 @@ func (h *MetricsHandler) GetRcodeDistributionHandler(w http.ResponseWriter, r *h
 // @Security BearerAuth
 // @Produce json
 // @Param period query int false "Period in seconds to which the data is limited (default: 259200)" default(259200)
+// @Param limit query int false "Limits the amount of data points returned by the endpoint (default: 60)" default(60)
 // @Success 200 {array} models.TimeSeriesData "Queries per minute data retrieved successfully"
 // @Failure 500 {object} models.GenericErrorResponse "Failed to retrieve queries per minute data"
 // @Router /api/v1/metrics/qpm [get]
@@ -146,7 +147,15 @@ func (h *MetricsHandler) GetQPMHandler(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	data, err := h.metricsQueryDriver.GetQPM(qpmPeriodInSeconds)
+	qpmLimitString := r.URL.Query().Get("limit")
+	var qpmLimit uint16 = 60
+	if qpmLimitString != "" {
+		if l, err := strconv.ParseUint(qpmLimitString, 10, 16); err == nil && l > 0 {
+			qpmLimit = uint16(l)
+		}
+	}
+
+	data, err := h.metricsQueryDriver.GetQPM(qpmPeriodInSeconds, qpmLimit)
 	if err != nil {
 		util.RespondWithJSON(w, http.StatusInternalServerError, models.GenericErrorResponse{
 			Error:        true,
