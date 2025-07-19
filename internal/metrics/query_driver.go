@@ -262,7 +262,7 @@ func (d *ClickHouseQueryDriver) GetQPM(periodInSeconds uint64, limit uint16) ([]
 		FROM dns_metrics
 		WHERE timestamp >= ?
 		GROUP BY time
-		ORDER BY time ASC
+		ORDER BY time DESC
 		LIMIT ?;
 	`, cutoffTime, limit)
 	if err != nil {
