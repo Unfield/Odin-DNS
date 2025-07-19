@@ -156,6 +156,7 @@ func handleRequest(clientAddr *net.UDPAddr, conn *net.UDPConn, buffer []byte, lo
 		}
 		currentMetric.ResponseTimeMs = float64(time.Since(startTime).Milliseconds())
 		ingestionDriver.Collect(currentMetric)
+		return
 	}
 
 	logger.Info("Processing DNS request", "domain", currentMetric.Domain, "type", currentMetric.QueryType)
