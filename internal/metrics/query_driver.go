@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
+	"slices"
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
@@ -293,6 +294,8 @@ func (d *ClickHouseQueryDriver) GetQPM(periodInSeconds uint64, limit uint16) ([]
 		d.logger.Info("No QPM data found")
 		return nil, nil
 	}
+
+	slices.Reverse(results)
 
 	return results, nil
 }
