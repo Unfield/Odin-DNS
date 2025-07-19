@@ -17,7 +17,7 @@ type MetricsQueryDriver interface {
 	GetOverallSummaryMetrics(hours int) (*models.GlobalAvgMetrics, error)
 	GetTopDomains(limit int) ([]models.TopNData, error)
 	GetRcodeDistribution() ([]models.RcodeData, error)
-	GetQPM() ([]models.TimeSeriesData, error)
+	GetQPM(periodInSeconds uint64) ([]models.TimeSeriesData, error)
 	Close() error
 }
 

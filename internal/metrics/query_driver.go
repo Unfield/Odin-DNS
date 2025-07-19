@@ -250,7 +250,7 @@ func (d *ClickHouseQueryDriver) GetRcodeDistribution() ([]models.RcodeData, erro
 	return results, nil
 }
 
-func (d *ClickHouseQueryDriver) GetQPM() ([]models.TimeSeriesData, error) {
+func (d *ClickHouseQueryDriver) GetQPM(periodInSeconds uint64) ([]models.TimeSeriesData, error) {
 	rows, err := d.clickHouseDB.Query(context.Background(), `
 		SELECT
 			toStartOfMinute(timestamp) as time,
@@ -258,9 +258,10 @@ func (d *ClickHouseQueryDriver) GetQPM() ([]models.TimeSeriesData, error) {
 			sum(1 - success) as errors,
 			(countIf(success = 1) * 100.0) / count(*) as percentage
 		FROM dns_metrics
+		WHERE timestamp >= now() - INTERVAL ? SECOND
 		GROUP BY time
 		ORDER BY time ASC;
-	`)
+	`, periodInSeconds)
 	if err != nil {
 		d.logger.Error("Failed to query QPM data", "error", err)
 		return nil, fmt.Errorf("failed to query QPM data: %w", err)

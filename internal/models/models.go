@@ -46,7 +46,7 @@ type TimeSeriesData struct {
 	Time       time.Time `json:"time" example:"2025-01-01T00:00:00Z"`
 	Requests   uint64    `json:"requests" example:"1234"`
 	Errors     int64     `json:"errors" example:"5"`
-	Percentage float64   `json:"percentage,omitempty" example:"95.5"`
+	Percentage float64   `json:"percentage" example:"95.5"`
 }
 
 type GlobalAvgMetrics struct {
