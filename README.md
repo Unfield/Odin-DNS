@@ -12,6 +12,16 @@ Odin DNS ist ein Demonstrationsprojekt, das meine Fähigkeiten im Bereich Backen
 
 ---
 
+### Odin DNS Service Status
+
+| Service         |                                                                                    |                                                                                    |
+| :-------------- | :--------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------- |
+| **DNS Core**    | ![DNS Core Uptime](https://status.odin-demo.drinkuth.online/api/badge/2/uptime)    | ![DNS Core Status](https://status.odin-demo.drinkuth.online/api/badge/2/status)    |
+| **DNS API**     | ![DNS API Uptime](https://status.odin-demo.drinkuth.online/api/badge/1/uptime)     | ![DNS API Status](https://status.odin-demo.drinkuth.online/api/badge/1/status)     |
+| **DNS Manager** | ![DNS Manager Uptime](https://status.odin-demo.drinkuth.online/api/badge/4/uptime) | ![DNS Manager Status](https://status.odin-demo.drinkuth.online/api/badge/4/status) |
+
+---
+
 ### Kernfunktionen von Odin DNS
 
 Odin DNS bietet folgende Funktionalitäten:
